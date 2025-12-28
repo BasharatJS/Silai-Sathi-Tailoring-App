@@ -57,7 +57,7 @@ export default function Contact() {
         >
           <h2 className="text-4xl sm:text-5xl font-bold text-navy mb-4">
             Get In{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold via-orange to-gold">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold via-navy to-gold">
               Touch
             </span>
           </h2>
@@ -162,7 +162,7 @@ export default function Contact() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   type="submit"
-                  className="w-full py-4 bg-gradient-to-r from-gold to-orange text-white rounded-xl font-semibold text-lg hover:shadow-2xl transition-all flex items-center justify-center gap-2"
+                  className="w-full py-4 bg-navy text-white rounded-xl font-semibold text-lg hover:bg-gold hover:shadow-2xl transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   Send Message
                   <Send className="h-5 w-5" />
@@ -182,7 +182,7 @@ export default function Contact() {
             <div className="space-y-4">
               <div className="bg-gradient-to-br from-white to-cream rounded-2xl shadow-lg p-6 border border-gray-100">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gold to-orange flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 rounded-xl bg-navy flex items-center justify-center flex-shrink-0">
                     <Phone className="h-6 w-6 text-white" />
                   </div>
                   <div>
@@ -195,7 +195,7 @@ export default function Contact() {
 
               <div className="bg-gradient-to-br from-white to-cream rounded-2xl shadow-lg p-6 border border-gray-100">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange to-gold flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 rounded-xl bg-navy flex items-center justify-center flex-shrink-0">
                     <Mail className="h-6 w-6 text-white" />
                   </div>
                   <div>
@@ -208,7 +208,7 @@ export default function Contact() {
 
               <div className="bg-gradient-to-br from-white to-cream rounded-2xl shadow-lg p-6 border border-gray-100">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-navy to-gold flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 rounded-xl bg-navy flex items-center justify-center flex-shrink-0">
                     <MapPin className="h-6 w-6 text-white" />
                   </div>
                   <div>
@@ -224,13 +224,13 @@ export default function Contact() {
             </div>
 
             {/* Map Placeholder */}
-            <div className="bg-gradient-to-br from-gray-200 to-gray-300 rounded-2xl h-64 flex items-center justify-center overflow-hidden shadow-lg">
+            {/* <div className="bg-gradient-to-br from-gray-200 to-gray-300 rounded-2xl h-64 flex items-center justify-center overflow-hidden shadow-lg">
               <div className="text-center text-charcoal/60">
                 <MapPin className="h-12 w-12 mx-auto mb-2" />
                 <p className="font-medium">Map Location</p>
                 <p className="text-sm">Visit us at our store</p>
               </div>
-            </div>
+            </div> */}
 
             {/* Social Media */}
             <div className="bg-gradient-to-br from-white to-cream rounded-2xl shadow-lg p-6 border border-gray-100">
@@ -240,7 +240,7 @@ export default function Contact() {
                   whileHover={{ scale: 1.1, rotate: 5 }}
                   whileTap={{ scale: 0.9 }}
                   href="#"
-                  className="w-12 h-12 rounded-xl bg-gradient-to-br from-gold to-orange flex items-center justify-center text-white hover:shadow-lg transition-all"
+                  className="w-12 h-12 rounded-xl bg-gradient-to-br from-navy to-gold flex items-center justify-center text-white hover:shadow-lg transition-all"
                 >
                   <Facebook className="h-5 w-5" />
                 </motion.a>
@@ -248,7 +248,7 @@ export default function Contact() {
                   whileHover={{ scale: 1.1, rotate: 5 }}
                   whileTap={{ scale: 0.9 }}
                   href="#"
-                  className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange to-gold flex items-center justify-center text-white hover:shadow-lg transition-all"
+                  className="w-12 h-12 rounded-xl bg-gradient-to-br from-navy to-gold flex items-center justify-center text-white hover:shadow-lg transition-all"
                 >
                   <Instagram className="h-5 w-5" />
                 </motion.a>

@@ -11,7 +11,8 @@ const benefits = [
     stat: "20+",
     suffix: "Years",
     description: "Two decades of experience in traditional and modern tailoring",
-    color: "from-gold to-orange",
+    color: "bg-navy",
+    solid: true,
   },
   {
     icon: Layers,
@@ -19,7 +20,8 @@ const benefits = [
     stat: "100+",
     suffix: "Options",
     description: "Extensive collection of high-quality fabrics from around India",
-    color: "from-orange to-gold",
+    color: "from-navy to-gold",
+    solid: false,
   },
   {
     icon: CheckCircle,
@@ -28,6 +30,7 @@ const benefits = [
     suffix: "Satisfaction",
     description: "Free alterations until you're completely satisfied with the fit",
     color: "from-navy to-gold",
+    solid: false,
   },
   {
     icon: Zap,
@@ -35,7 +38,8 @@ const benefits = [
     stat: "7-10",
     suffix: "Days",
     description: "Fast turnaround without compromising on quality or attention to detail",
-    color: "from-gold to-navy",
+    color: "bg-navy",
+    solid: true,
   },
 ];
 
@@ -99,7 +103,7 @@ export default function WhyChooseUs() {
         >
           <h2 className="text-4xl sm:text-5xl font-bold text-navy mb-4">
             Why Choose{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold via-orange to-gold">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold via-navy to-gold">
               Silai Sathi?
             </span>
           </h2>
@@ -131,7 +135,7 @@ export default function WhyChooseUs() {
                       delay: index * 0.15 + 0.2,
                       type: "spring",
                     }}
-                    className={`w-16 h-16 rounded-xl bg-gradient-to-br ${benefit.color} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}
+                    className={`w-16 h-16 rounded-xl ${benefit.solid ? benefit.color : `bg-gradient-to-br ${benefit.color}`} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}
                   >
                     <Icon className="h-8 w-8 text-white" />
                   </motion.div>

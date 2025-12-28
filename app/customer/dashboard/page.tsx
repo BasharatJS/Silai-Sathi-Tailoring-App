@@ -154,7 +154,7 @@ export default function CustomerDashboard() {
                         <motion.button
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
-                          className="w-full py-3 bg-gold text-white rounded-lg font-semibold hover:bg-orange hover:shadow-xl transition-all"
+                          className="w-full py-3 bg-navy text-white rounded-lg font-semibold hover:bg-gold hover:shadow-xl transition-all cursor-pointer"
                         >
                           Start Order
                         </motion.button>
@@ -187,9 +187,9 @@ export default function CustomerDashboard() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setSelectedCategory(category.name)}
-                  className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                  className={`px-4 py-2 rounded-lg font-semibold transition-all cursor-pointer ${
                     selectedCategory === category.name
-                      ? "bg-gradient-to-r from-gold to-orange text-white shadow-lg"
+                      ? "bg-navy text-white shadow-lg"
                       : "bg-white text-navy border-2 border-gray-200 hover:border-gold"
                   }`}
                 >
@@ -317,7 +317,7 @@ export default function CustomerDashboard() {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="px-8 py-4 bg-gradient-to-r from-gold to-orange text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-2xl transition-all inline-flex items-center gap-3"
+                className="px-8 py-4 bg-navy text-white rounded-xl font-bold text-lg shadow-lg hover:bg-gold hover:shadow-2xl transition-all inline-flex items-center gap-3 cursor-pointer"
               >
                 <Sparkles className="h-5 w-5" />
                 View More Fabric Collection

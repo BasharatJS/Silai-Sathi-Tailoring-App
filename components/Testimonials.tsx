@@ -110,7 +110,7 @@ export default function Testimonials() {
         >
           <h2 className="text-4xl sm:text-5xl font-bold text-navy mb-4">
             What Our{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold via-orange to-gold">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold via-navy to-gold">
              Customers Say
             </span>
           </h2>
@@ -172,7 +172,7 @@ export default function Testimonials() {
 
                   {/* Author */}
                   <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-gold to-orange flex items-center justify-center text-white font-bold text-lg">
+                    <div className="w-14 h-14 rounded-full bg-navy flex items-center justify-center text-white font-bold text-lg">
                       {testimonials[currentIndex].avatar}
                     </div>
                     <div>

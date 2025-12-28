@@ -12,7 +12,8 @@ const steps = [
     title: "Choose & Customize",
     description:
       "Browse our extensive collection and select your preferred style, fabric, and design. Customize every detail to match your vision.",
-    color: "from-gold to-orange",
+    color: "bg-navy",
+    solid: true,
   },
   {
     number: "02",
@@ -20,7 +21,8 @@ const steps = [
     title: "Get Measured",
     description:
       "Provide your measurements through our simple guide, or book a home visit for professional measurement by our expert tailors.",
-    color: "from-orange to-gold",
+    color: "from-navy to-gold",
+    solid: false,
   },
   {
     number: "03",
@@ -28,7 +30,8 @@ const steps = [
     title: "Receive & Enjoy",
     description:
       "Relax while we craft your perfect outfit. Get it delivered to your doorstep within 7-10 days with free alterations guaranteed.",
-    color: "from-navy to-gold",
+    color: "bg-navy",
+    solid: true,
   },
 ];
 
@@ -55,7 +58,7 @@ export default function Process() {
         >
           <h2 className="text-4xl sm:text-5xl font-bold text-navy mb-4">
             Simple 3-Step{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold via-orange to-gold">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold via-navy to-gold">
               Process
             </span>
           </h2>
@@ -97,7 +100,7 @@ export default function Process() {
                       type: "spring",
                       stiffness: 200,
                     }}
-                    className={`relative w-24 h-24 mb-6 rounded-full bg-gradient-to-br ${step.color} flex items-center justify-center shadow-xl`}
+                    className={`relative w-24 h-24 mb-6 rounded-full ${step.solid ? step.color : `bg-gradient-to-br ${step.color}`} flex items-center justify-center shadow-xl`}
                   >
                     <div className="absolute inset-0 bg-white/20 rounded-full blur-xl" />
                     <Icon className="h-12 w-12 text-white relative z-10" />
@@ -120,7 +123,7 @@ export default function Process() {
                       initial={{ scaleY: 0 }}
                       animate={isInView ? { scaleY: 1 } : {}}
                       transition={{ duration: 0.5, delay: index * 0.3 + 0.6 }}
-                      className="lg:hidden w-0.5 h-16 bg-gradient-to-b from-gold to-orange mt-8 origin-top"
+                      className="lg:hidden w-0.5 h-16 bg-gradient-to-b from-navy to-gold mt-8 origin-top"
                     />
                   )}
                 </motion.div>
@@ -152,7 +155,7 @@ export default function Process() {
                 window.scrollTo({ top: offsetPosition, behavior: "smooth" });
               }
             }}
-            className="px-8 py-4 bg-gradient-to-r from-gold to-orange text-white rounded-full font-semibold text-lg hover:shadow-2xl transition-all"
+            className="px-8 py-4 bg-navy text-white rounded-full font-semibold text-lg hover:bg-gold hover:shadow-2xl transition-all cursor-pointer"
           >
             Start Your Journey
           </motion.button>

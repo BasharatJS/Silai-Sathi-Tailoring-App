@@ -3,6 +3,7 @@
 import { motion, useInView } from "framer-motion";
 import { useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
+import Link from "next/link";
 
 const categories = ["All", "Cotton", "Silk", "Linen", "Premium Blend"];
 
@@ -92,7 +93,7 @@ export default function Gallery() {
         >
           <h2 className="text-4xl sm:text-5xl font-bold text-navy mb-4">
             Premium Fabric{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold via-orange to-gold">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold via-navy to-gold">
               Collection
             </span>
           </h2>
@@ -118,9 +119,9 @@ export default function Gallery() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setActiveCategory(category)}
-              className={`px-6 py-2.5 rounded-full font-medium transition-all ${
+              className={`px-6 py-2.5 rounded-full font-medium transition-all cursor-pointer ${
                 activeCategory === category
-                  ? "bg-gradient-to-r from-gold to-orange text-white shadow-lg"
+                  ? "bg-navy text-white shadow-lg"
                   : "bg-white text-charcoal hover:bg-gray-50 shadow"
               }`}
             >
@@ -219,23 +220,15 @@ export default function Gallery() {
           <p className="text-charcoal/80 mb-6">
             Want to see our complete fabric catalog?
           </p>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => {
-              const element = document.querySelector("#contact");
-              if (element) {
-                const offset = 80;
-                const elementPosition = element.getBoundingClientRect().top;
-                const offsetPosition =
-                  elementPosition + window.pageYOffset - offset;
-                window.scrollTo({ top: offsetPosition, behavior: "smooth" });
-              }
-            }}
-            className="px-8 py-4 bg-navy text-white rounded-full font-semibold text-lg hover:bg-navy/90 transition-all shadow-lg hover:shadow-2xl"
-          >
-            Request Fabric Samples
-          </motion.button>
+          <Link href="/customer/fabrics">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="px-8 py-4 bg-navy text-white rounded-full font-semibold text-lg hover:bg-gold transition-all shadow-lg hover:shadow-2xl cursor-pointer"
+            >
+              View Complete Collection
+            </motion.button>
+          </Link>
         </motion.div>
       </div>
     </section>

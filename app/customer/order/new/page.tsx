@@ -451,7 +451,7 @@ function NewOrderContent() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setShowFabricList(!showFabricList)}
-                className="w-full mb-6 px-6 py-4 bg-navy text-white rounded-xl font-semibold hover:bg-navy/90 transition-all flex items-center justify-between"
+                className="w-full mb-6 px-6 py-4 bg-navy text-white rounded-xl font-semibold hover:bg-gold transition-all flex items-center justify-between cursor-pointer"
               >
                 <span>
                   {selectedFabric ? "Change Fabric" : "Select Fabric"}

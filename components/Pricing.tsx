@@ -34,8 +34,8 @@ const pricingPlans = [
       "Fabric consultation",
       "Home measurement available",
     ],
-    gradient: "from-gold to-orange",
-    buttonStyle: "bg-gradient-to-r from-gold to-orange hover:shadow-xl",
+    gradient: "from-navy to-gold",
+    buttonStyle: "bg-gradient-to-r from-navy to-gold hover:shadow-xl",
     popular: true,
     icon: Crown,
   },
@@ -94,7 +94,7 @@ export default function Pricing() {
         >
           <h2 className="text-4xl sm:text-5xl font-bold text-navy mb-4">
             Transparent{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold via-orange to-gold">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold via-navy to-gold">
               Pricing
             </span>
           </h2>
@@ -118,7 +118,7 @@ export default function Pricing() {
               >
                 {plan.popular && (
                   <div className="absolute -top-5 left-1/2 transform -translate-x-1/2 z-10">
-                    <span className="bg-gradient-to-r from-gold to-orange text-white px-6 py-2 rounded-full text-sm font-bold shadow-lg flex items-center gap-2">
+                    <span className="bg-gradient-to-r from-navy to-gold text-white px-6 py-2 rounded-full text-sm font-bold shadow-lg flex items-center gap-2">
                       <Crown className="h-4 w-4" />
                       Most Popular
                     </span>

@@ -102,9 +102,9 @@ export default function FabricsPage() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setSelectedCategory(category.name)}
-                className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+                className={`px-6 py-3 rounded-lg font-semibold transition-all cursor-pointer ${
                   selectedCategory === category.name
-                    ? "bg-gradient-to-r from-gold to-orange text-white shadow-lg"
+                    ? "bg-navy text-white shadow-lg"
                     : "bg-white text-navy border-2 border-gray-200 hover:border-gold"
                 }`}
               >

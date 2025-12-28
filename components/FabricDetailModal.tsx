@@ -37,7 +37,7 @@ export default function FabricDetailModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 overflow-y-auto"
       onClick={onClose}
     >
       <motion.div
@@ -45,7 +45,7 @@ export default function FabricDetailModal({
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.9, y: 20 }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full overflow-hidden relative"
+        className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full overflow-hidden relative my-8 max-h-[90vh] flex flex-col"
       >
         {/* Fabric Image/Preview */}
         <div
@@ -88,14 +88,14 @@ export default function FabricDetailModal({
           {/* Close Button */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 z-10 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-colors shadow-lg"
+            className="absolute top-4 right-4 z-10 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-colors shadow-lg cursor-pointer"
           >
             <X className="h-5 w-5 text-navy" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-8">
+        <div className="p-8 overflow-y-auto flex-1">
           <h2 className="text-3xl font-bold text-navy mb-3">{fabric.name}</h2>
           <p className="text-charcoal/80 mb-8">{fabric.description}</p>
 
@@ -106,7 +106,7 @@ export default function FabricDetailModal({
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleBuyFabric}
-              className="w-full group relative overflow-hidden bg-gradient-to-r from-gold to-orange text-white rounded-xl p-6 shadow-lg hover:shadow-2xl transition-all"
+              className="w-full group relative overflow-hidden bg-orange text-white rounded-xl p-6 shadow-lg hover:shadow-2xl transition-all cursor-pointer"
             >
               <div className="flex items-center justify-center gap-3 mb-2">
                 <ShoppingBag className="h-6 w-6" />
@@ -126,7 +126,7 @@ export default function FabricDetailModal({
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => handleStitchWithFabric("kurta")}
-                  className="group relative overflow-hidden bg-gradient-to-br from-navy to-charcoal text-white rounded-xl p-4 shadow-lg hover:shadow-2xl transition-all"
+                  className="group relative overflow-hidden bg-gradient-to-br from-navy to-charcoal text-white rounded-xl p-4 shadow-lg hover:shadow-2xl transition-all cursor-pointer"
                 >
                   <div className="flex flex-col items-center justify-center gap-2">
                     <Scissors className="h-5 w-5" />
@@ -140,7 +140,7 @@ export default function FabricDetailModal({
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => handleStitchWithFabric("pyjama")}
-                  className="group relative overflow-hidden bg-gradient-to-br from-orange to-gold text-white rounded-xl p-4 shadow-lg hover:shadow-2xl transition-all"
+                  className="group relative overflow-hidden bg-navy text-white rounded-xl p-4 shadow-lg hover:shadow-2xl transition-all cursor-pointer"
                 >
                   <div className="flex flex-col items-center justify-center gap-2">
                     <Scissors className="h-5 w-5" />
@@ -154,7 +154,7 @@ export default function FabricDetailModal({
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => handleStitchWithFabric("complete")}
-                  className="group relative overflow-hidden bg-gradient-to-br from-purple-600 to-indigo-600 text-white rounded-xl p-4 shadow-lg hover:shadow-2xl transition-all"
+                  className="group relative overflow-hidden bg-navy text-white rounded-xl p-4 shadow-lg hover:shadow-2xl transition-all cursor-pointer"
                 >
                   <div className="flex flex-col items-center justify-center gap-2">
                     <Scissors className="h-5 w-5" />

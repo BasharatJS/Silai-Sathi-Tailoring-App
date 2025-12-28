@@ -101,7 +101,7 @@ export default function Hero() {
           className="text-5xl sm:text-6xl lg:text-7xl font-bold text-navy mb-6 leading-tight"
         >
           Perfect Fit,{" "}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold via-orange to-gold">
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold via-navy to-gold">
             Perfectly Crafted
           </span>
         </motion.h1>

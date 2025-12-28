@@ -99,7 +99,7 @@ export default function Header() {
                 key={link.name}
                 onClick={() => scrollToSection(link.href)}
                 className={cn(
-                  "relative text-sm font-medium transition-colors hover:text-gold",
+                  "relative text-base font-medium transition-colors hover:text-gold",
                   activeSection === link.href.substring(1)
                     ? "text-gold"
                     : "text-charcoal"
@@ -120,16 +120,16 @@ export default function Header() {
           {/* Action Buttons */}
           <div className="hidden md:flex items-center gap-3">
             <AdminLoginDialog />
-            <Link href="/customer/dashboard">
+            {/* <Link href="/customer/dashboard">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="px-4 py-2 bg-navy text-white rounded-full font-medium hover:bg-navy/90 transition-colors shadow-lg hover:shadow-xl flex items-center gap-2"
+                className="px-4 py-2 bg-navy text-white rounded-full font-medium hover:bg-gold transition-colors shadow-lg hover:shadow-xl flex items-center gap-2 cursor-pointer"
               >
                 <LayoutDashboard className="h-4 w-4" />
                 My Dashboard
               </motion.button>
-            </Link>
+            </Link> */}
           </div>
 
           {/* Mobile Menu Button */}
@@ -165,7 +165,7 @@ export default function Header() {
                   transition={{ delay: index * 0.1 }}
                   onClick={() => scrollToSection(link.href)}
                   className={cn(
-                    "text-left px-4 py-3 rounded-lg font-medium transition-colors",
+                    "text-left px-4 py-3 rounded-lg font-medium transition-colors text-base",
                     activeSection === link.href.substring(1)
                       ? "bg-gold/10 text-gold"
                       : "text-charcoal hover:bg-gray-100"
@@ -182,7 +182,7 @@ export default function Header() {
               >
                 <AdminLoginDialog />
                 <Link href="/customer/dashboard" className="block">
-                  <button className="w-full px-4 py-3 bg-navy text-white rounded-lg font-medium hover:bg-navy/90 transition-colors flex items-center justify-center gap-2">
+                  <button className="w-full px-4 py-3 bg-navy text-white rounded-lg font-medium hover:bg-gold transition-colors flex items-center justify-center gap-2 cursor-pointer">
                     <LayoutDashboard className="h-4 w-4" />
                     My Dashboard
                   </button>

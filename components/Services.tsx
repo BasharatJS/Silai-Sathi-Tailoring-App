@@ -14,7 +14,8 @@ const services = [
       "Expertly crafted kurtas with custom measurements and premium fabrics. Choose from traditional to contemporary designs.",
     price: "₹650",
     features: ["Custom Measurements", "Premium Fabrics", "Traditional & Modern Designs"],
-    gradient: "from-gold to-orange",
+    gradient: "bg-navy",
+    solidColor: true,
   },
   {
     icon: FileText,
@@ -23,7 +24,7 @@ const services = [
       "Comfortable and perfectly fitted pyjamas tailored to your exact specifications. Multiple style options available.",
     price: "₹450",
     features: ["Perfect Fit", "Comfortable Designs", "Multiple Styles"],
-    gradient: "from-orange to-gold",
+    gradient: "from-navy to-gold",
     popular: true,
   },
   {
@@ -33,7 +34,8 @@ const services = [
       "Get the perfect kurta-pyjama combination with special pricing. Complete outfit solution for any occasion.",
     price: "₹999",
     features: ["Kurta + Pyjama", "Matching Set", "Special Pricing"],
-    gradient: "from-navy to-gold",
+    gradient: "bg-navy",
+    solidColor: true,
   },
 ];
 
@@ -71,7 +73,7 @@ export default function Services() {
         >
           <h2 className="text-4xl sm:text-5xl font-bold text-navy mb-4">
             Our Tailoring{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold via-orange to-gold">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold via-navy to-gold">
               Services
             </span>
           </h2>
@@ -95,7 +97,7 @@ export default function Services() {
               >
                 {service.popular && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-10">
-                    <span className="bg-gradient-to-r from-orange to-gold text-white px-4 py-1 rounded-full text-sm font-semibold shadow-lg">
+                    <span className="bg-gradient-to-r from-navy to-gold text-white px-4 py-1 rounded-full text-sm font-semibold shadow-lg">
                       Most Popular
                     </span>
                   </div>
@@ -104,7 +106,7 @@ export default function Services() {
                 <div className="h-full bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100">
                   {/* Card Header with Gradient */}
                   <div
-                    className={`bg-gradient-to-br ${service.gradient} p-8 text-white relative`}
+                    className={`${service.solidColor ? service.gradient : `bg-gradient-to-br ${service.gradient}`} p-8 text-white relative`}
                   >
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
                     <Icon className="h-12 w-12 mb-4 relative z-10" />
@@ -137,7 +139,7 @@ export default function Services() {
                       <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        className="w-full px-6 py-3 bg-navy text-white rounded-lg font-semibold hover:bg-navy/90 transition-colors flex items-center justify-center gap-2 group"
+                        className="w-full px-6 py-3 bg-navy text-white rounded-lg font-semibold hover:bg-gold transition-colors flex items-center justify-center gap-2 group cursor-pointer"
                       >
                         Order Now
                         <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
