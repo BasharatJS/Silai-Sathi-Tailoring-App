@@ -21,7 +21,7 @@ export default function Home() {
         <WhyChooseUs />
         <Gallery />
         <Testimonials />
-        <Pricing />
+        {/* <Pricing /> */}
         <Contact />
       </main>
       <Footer />

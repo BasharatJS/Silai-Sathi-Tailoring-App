@@ -73,7 +73,7 @@ export default function Footer() {
                 />
               </div>
               <span className="text-2xl font-bold">
-                Silai <span className="text-gold">Sathi</span>
+                7e<span className="text-gold">Online</span>
               </span>
             </motion.div>
             <p className="text-white/80 mb-6 leading-relaxed">
@@ -195,7 +195,7 @@ export default function Footer() {
         {/* Copyright */}
         <div className="text-center text-sm text-white/60">
           <p className="flex items-center justify-center gap-2 flex-wrap">
-            <span>&copy; {new Date().getFullYear()} Silai Sathi.</span>
+            <span>&copy; {new Date().getFullYear()} 7eOline.</span>
             <span>All rights reserved.</span>
             <span className="flex items-center gap-1">
               Powered by{" "}

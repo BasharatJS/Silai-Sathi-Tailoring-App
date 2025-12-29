@@ -1,20 +1,43 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
 import { ArrowLeft, Plus, Minus, ShoppingBag } from "lucide-react";
-import { getFabricById } from "@/lib/fabricData";
+import { Fabric } from "@/lib/fabricData";
+import { getFabricById } from "@/services/fabricService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { createFabricOnlyOrder } from "@/services/orderService";
+import { FabricOnlyOrderData } from "@/types/order";
+import OrderSuccessModal from "@/components/OrderSuccessModal";
 
 function BuyFabricContent() {
   const searchParams = useSearchParams();
   const fabricId = searchParams.get("id");
   const colorIndex = parseInt(searchParams.get("colorIndex") || "0");
-  const fabric = fabricId ? getFabricById(fabricId) : null;
+  const [fabric, setFabric] = useState<Fabric | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadFabric = async () => {
+      if (fabricId) {
+        try {
+          setIsLoading(true);
+          const fetchedFabric = await getFabricById(fabricId);
+          setFabric(fetchedFabric);
+        } catch (error) {
+          console.error("Error loading fabric:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadFabric();
+  }, [fabricId]);
 
   const [quantity, setQuantity] = useState(2);
 
@@ -30,17 +53,53 @@ function BuyFabricContent() {
     pincode: "",
   });
 
+  // Success modal state
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [orderData, setOrderData] = useState<{ id: string; orderNumber: string } | null>(null);
+
   const totalPrice = fabric ? fabric.pricePerMeter * quantity : 0;
 
   const handleQuantityChange = (delta: number) => {
     setQuantity(Math.max(1, quantity + delta));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log({ fabric: fabric?.id, quantity, address, totalPrice });
-    alert("Order placed successfully! (Firebase integration coming soon)");
+
+    if (!fabric) return;
+
+    try {
+      const formData: FabricOnlyOrderData = {
+        fabric: fabric.id,
+        fabricQuantity: quantity,
+        selectedFabricColorIndex: colorIndex,
+        address,
+      };
+
+      const result = await createFabricOnlyOrder(formData);
+
+      // Show success modal
+      setOrderData({
+        id: result.orderId,
+        orderNumber: result.orderNumber,
+      });
+      setShowSuccessModal(true);
+    } catch (error) {
+      console.error("Error placing fabric order:", error);
+      alert("Failed to place order. Please try again or contact support.");
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-cream to-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block h-12 w-12 border-4 border-gold border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="text-charcoal/60">Loading fabric details...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!fabric) {
     return (
@@ -296,6 +355,17 @@ function BuyFabricContent() {
           </motion.div>
         </div>
       </div>
+
+      {/* Success Modal */}
+      <AnimatePresence>
+        {showSuccessModal && orderData && (
+          <OrderSuccessModal
+            orderId={orderData.id}
+            orderNumber={orderData.orderNumber}
+            onClose={() => setShowSuccessModal(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

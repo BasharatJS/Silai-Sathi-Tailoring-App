@@ -4,8 +4,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, Shirt, FileText, Package, Sparkles } from "lucide-react";
-import { useState } from "react";
-import { fabrics, getFabricsByCategory, Fabric } from "@/lib/fabricData";
+import { useState, useEffect } from "react";
+import { Fabric } from "@/lib/fabricData";
+import { getAllFabrics } from "@/services/fabricService";
 import FabricDetailModal from "@/components/FabricDetailModal";
 
 const services = [
@@ -35,31 +36,84 @@ const services = [
   },
 ];
 
-const fabricCategories = [
-  { name: "All", count: 16 },
-  { name: "Cotton", count: 4 },
-  { name: "Silk", count: 4 },
-  { name: "Linen", count: 4 },
-  { name: "Premium Blend", count: 4 },
-];
-
 export default function CustomerDashboard() {
   const [hoveredService, setHoveredService] = useState<number | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [selectedFabric, setSelectedFabric] = useState<Fabric | null>(null);
+  const [fabrics, setFabrics] = useState<Fabric[]>([]);
+  const [fabricsLoading, setFabricsLoading] = useState(true);
 
   // Initialize with random colors for each fabric
-  const [selectedColors, setSelectedColors] = useState<{ [key: string]: number }>(() => {
-    const initialColors: { [key: string]: number } = {};
-    fabrics.forEach((fabric) => {
-      initialColors[fabric.id] = Math.floor(Math.random() * fabric.colors.length);
-    });
-    return initialColors;
-  });
+  const [selectedColors, setSelectedColors] = useState<{ [key: string]: number }>({});
 
-  const displayedFabrics = (selectedCategory === "All"
-    ? fabrics
-    : getFabricsByCategory(selectedCategory)).slice(0, 8); // Show only first 8 fabrics on dashboard
+  useEffect(() => {
+    loadFabrics();
+
+    // Reload fabrics when page becomes visible/focused
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        loadFabrics();
+      }
+    };
+
+    const handleFocus = () => {
+      loadFabrics();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, []);
+
+  const loadFabrics = async () => {
+    try {
+      setFabricsLoading(true);
+      const fetchedFabrics = await getAllFabrics();
+      // Only show available fabrics
+      const availableFabrics = fetchedFabrics.filter((f) => f.available);
+      setFabrics(availableFabrics);
+
+      // Initialize random colors for each fabric
+      const initialColors: { [key: string]: number } = {};
+      availableFabrics.forEach((fabric) => {
+        initialColors[fabric.id] = Math.floor(
+          Math.random() * fabric.colors.length
+        );
+      });
+      setSelectedColors(initialColors);
+    } catch (error) {
+      console.error("Error loading fabrics:", error);
+    } finally {
+      setFabricsLoading(false);
+    }
+  };
+
+  const fabricCategories = [
+    { name: "All", count: fabrics.length },
+    {
+      name: "Cotton",
+      count: fabrics.filter((f) => f.category === "Cotton").length,
+    },
+    { name: "Silk", count: fabrics.filter((f) => f.category === "Silk").length },
+    {
+      name: "Linen",
+      count: fabrics.filter((f) => f.category === "Linen").length,
+    },
+    {
+      name: "Premium Blend",
+      count: fabrics.filter((f) => f.category === "Premium Blend").length,
+    },
+  ];
+
+  const displayedFabrics = (
+    selectedCategory === "All"
+      ? fabrics
+      : fabrics.filter((f) => f.category === selectedCategory)
+  ).slice(0, 8); // Show only first 8 fabrics on dashboard
 
   const handleColorChange = (fabricId: string, colorIndex: number) => {
     setSelectedColors((prev) => ({
@@ -89,7 +143,7 @@ export default function CustomerDashboard() {
                 Back to Home
               </motion.button>
             </Link>
-            <h1 className="text-2xl md:text-3xl font-bold">
+            <h1 className="text-xl md:text-2xl lg:text-3xl font-bold">
               Welcome to Silai Sathi
             </h1>
             <div className="w-24" /> {/* Spacer for centering */}
@@ -113,7 +167,7 @@ export default function CustomerDashboard() {
             <h2 className="text-3xl font-bold text-navy">Tailoring Services</h2>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
             {services.map((service, index) => {
               const Icon = service.icon;
               return (
@@ -143,8 +197,8 @@ export default function CustomerDashboard() {
                     </div>
 
                     {/* Service Content */}
-                    <div className="p-6">
-                      <h3 className="text-2xl font-bold text-navy mb-2">
+                    <div className="p-4 md:p-5 lg:p-6">
+                      <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-navy mb-2">
                         {service.title}
                       </h3>
                       <p className="text-charcoal/80 mb-6">{service.description}</p>
@@ -187,7 +241,7 @@ export default function CustomerDashboard() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setSelectedCategory(category.name)}
-                  className={`px-4 py-2 rounded-lg font-semibold transition-all cursor-pointer ${
+                  className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-sm md:text-base font-semibold transition-all cursor-pointer ${
                     selectedCategory === category.name
                       ? "bg-navy text-white shadow-lg"
                       : "bg-white text-navy border-2 border-gray-200 hover:border-gold"
@@ -206,7 +260,7 @@ export default function CustomerDashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+            className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5 lg:gap-6"
           >
             {displayedFabrics.map((fabric, index) => (
               <motion.div
@@ -296,7 +350,7 @@ export default function CustomerDashboard() {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => setSelectedFabric(fabric)}
-                      className="w-full py-2 bg-gradient-to-r from-navy to-charcoal text-white rounded-lg font-semibold hover:shadow-lg transition-all"
+                      className="w-full py-1.5 md:py-2 text-sm md:text-base bg-gradient-to-r from-navy to-charcoal text-white rounded-lg font-semibold hover:shadow-lg transition-all"
                     >
                       Choose
                     </motion.button>
@@ -317,7 +371,7 @@ export default function CustomerDashboard() {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="px-8 py-4 bg-navy text-white rounded-xl font-bold text-lg shadow-lg hover:bg-gold hover:shadow-2xl transition-all inline-flex items-center gap-3 cursor-pointer"
+                className="px-6 md:px-8 py-3 md:py-4 bg-navy text-white rounded-xl font-bold text-base md:text-lg shadow-lg hover:bg-gold hover:shadow-2xl transition-all inline-flex items-center gap-2 md:gap-3 cursor-pointer"
               >
                 <Sparkles className="h-5 w-5" />
                 View More Fabric Collection

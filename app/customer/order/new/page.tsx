@@ -20,7 +20,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { fabrics, getFabricById, Fabric } from "@/lib/fabricData";
+import { Fabric } from "@/lib/fabricData";
+import { getAllFabrics, getFabricById } from "@/services/fabricService";
+import { createOrder } from "@/services/orderService";
+import { OrderFormData } from "@/types/order";
+import OrderSuccessModal from "@/components/OrderSuccessModal";
 
 const steps = [
   { id: 1, name: "Select Service", icon: Shirt },
@@ -129,6 +133,8 @@ function NewOrderContent() {
   const preSelectedService = searchParams.get("service");
   const preSelectedColorIndex = parseInt(searchParams.get("colorIndex") || "0");
 
+  const [fabrics, setFabrics] = useState<Fabric[]>([]);
+  const [fabricsLoading, setFabricsLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedService, setSelectedService] = useState("");
   const [selectedFabric, setSelectedFabric] = useState("");
@@ -139,13 +145,7 @@ function NewOrderContent() {
   const [showFabricList, setShowFabricList] = useState(false);
 
   // Track color selection for each fabric in the list
-  const [fabricListColors, setFabricListColors] = useState<{ [key: string]: number }>(() => {
-    const initialColors: { [key: string]: number } = {};
-    fabrics.forEach((fabric) => {
-      initialColors[fabric.id] = Math.floor(Math.random() * fabric.colors.length);
-    });
-    return initialColors;
-  });
+  const [fabricListColors, setFabricListColors] = useState<{ [key: string]: number }>({});
   const [measurements, setMeasurements] = useState({
     chest: "",
     waist: "",
@@ -162,6 +162,56 @@ function NewOrderContent() {
     pincode: "",
   });
 
+  // Success modal state
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [orderData, setOrderData] = useState<{ id: string; orderNumber: string } | null>(null);
+
+  // Load fabrics from Firebase
+  useEffect(() => {
+    const loadFabrics = async () => {
+      try {
+        setFabricsLoading(true);
+        const fetchedFabrics = await getAllFabrics();
+        const availableFabrics = fetchedFabrics.filter((f) => f.available);
+        setFabrics(availableFabrics);
+
+        // Initialize random colors for each fabric
+        const initialColors: { [key: string]: number } = {};
+        availableFabrics.forEach((fabric) => {
+          initialColors[fabric.id] = Math.floor(
+            Math.random() * fabric.colors.length
+          );
+        });
+        setFabricListColors(initialColors);
+      } catch (error) {
+        console.error("Error loading fabrics:", error);
+      } finally {
+        setFabricsLoading(false);
+      }
+    };
+
+    loadFabrics();
+
+    // Reload fabrics when page becomes visible/focused
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        loadFabrics();
+      }
+    };
+
+    const handleFocus = () => {
+      loadFabrics();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, []);
+
   // Pre-select fabric and service if coming from fabric selection
   useEffect(() => {
     if (preSelectedFabricId) {
@@ -177,7 +227,7 @@ function NewOrderContent() {
     }
   }, [preSelectedFabricId, preSelectedService, preSelectedColorIndex]);
 
-  const selectedFabricData = selectedFabric ? getFabricById(selectedFabric) : null;
+  const selectedFabricData = selectedFabric ? fabrics.find(f => f.id === selectedFabric) : null;
   const selectedServiceData = serviceOptions.find((s) => s.id === selectedService);
   const selectedStyleData = styleOptions.find((s) => s.id === selectedStyle);
   const selectedButtonTypeData = buttonTypeOptions.find((b) => b.id === selectedButtonType);
@@ -226,20 +276,31 @@ function NewOrderContent() {
     }
   };
 
-  const handleSubmit = () => {
-    console.log({
-      service: selectedService,
-      fabric: selectedFabric,
-      fabricQuantity: fabricQuantity,
-      style: selectedStyle,
-      buttonType: selectedButtonType,
-      measurements,
-      address,
-      totalAmount:
-        (selectedServiceData?.price || 0) +
-        (selectedFabricData?.pricePerMeter || 0) * fabricQuantity,
-    });
-    alert("Order placed successfully! (Firebase integration coming soon)");
+  const handleSubmit = async () => {
+    try {
+      const formData: OrderFormData = {
+        service: selectedService,
+        fabric: selectedFabric,
+        fabricQuantity: fabricQuantity,
+        selectedFabricColorIndex: selectedFabricColorIndex,
+        style: selectedStyle,
+        buttonType: selectedButtonType,
+        measurements,
+        address,
+      };
+
+      const result = await createOrder(formData);
+
+      // Show success modal
+      setOrderData({
+        id: result.orderId,
+        orderNumber: result.orderNumber,
+      });
+      setShowSuccessModal(true);
+    } catch (error) {
+      console.error("Error placing order:", error);
+      alert("Failed to place order. Please try again or contact support.");
+    }
   };
 
   return (
@@ -1064,6 +1125,17 @@ function NewOrderContent() {
           </div>
         </motion.div>
       </div>
+
+      {/* Success Modal */}
+      <AnimatePresence>
+        {showSuccessModal && orderData && (
+          <OrderSuccessModal
+            orderId={orderData.id}
+            orderNumber={orderData.orderNumber}
+            onClose={() => setShowSuccessModal(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 export type FabricColor = {
   name: string;
-  gradient: string;
+  gradient?: string;
   colorCode: string;
 };
 
@@ -11,7 +11,7 @@ export type Fabric = {
   price: number;
   pricePerMeter: number;
   image?: string;
-  gradient: string;
+  gradient?: string;
   description: string;
   available: boolean;
   colors: FabricColor[];

@@ -3,34 +3,87 @@
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { ArrowLeft, Sparkles } from "lucide-react";
-import { useState } from "react";
-import { fabrics, getFabricsByCategory, Fabric } from "@/lib/fabricData";
+import { useState, useEffect } from "react";
+import { Fabric } from "@/lib/fabricData";
+import { getAllFabrics } from "@/services/fabricService";
 import FabricDetailModal from "@/components/FabricDetailModal";
-
-const fabricCategories = [
-  { name: "All", count: 16 },
-  { name: "Cotton", count: 4 },
-  { name: "Silk", count: 4 },
-  { name: "Linen", count: 4 },
-  { name: "Premium Blend", count: 4 },
-];
 
 export default function FabricsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [selectedFabric, setSelectedFabric] = useState<Fabric | null>(null);
+  const [fabrics, setFabrics] = useState<Fabric[]>([]);
+  const [fabricsLoading, setFabricsLoading] = useState(true);
 
   // Initialize with random colors for each fabric
-  const [selectedColors, setSelectedColors] = useState<{ [key: string]: number }>(() => {
-    const initialColors: { [key: string]: number } = {};
-    fabrics.forEach((fabric) => {
-      initialColors[fabric.id] = Math.floor(Math.random() * fabric.colors.length);
-    });
-    return initialColors;
-  });
+  const [selectedColors, setSelectedColors] = useState<{ [key: string]: number }>({});
 
-  const displayedFabrics = selectedCategory === "All"
-    ? fabrics
-    : getFabricsByCategory(selectedCategory);
+  useEffect(() => {
+    loadFabrics();
+
+    // Reload fabrics when page becomes visible/focused
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        loadFabrics();
+      }
+    };
+
+    const handleFocus = () => {
+      loadFabrics();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, []);
+
+  const loadFabrics = async () => {
+    try {
+      setFabricsLoading(true);
+      const fetchedFabrics = await getAllFabrics();
+      // Only show available fabrics
+      const availableFabrics = fetchedFabrics.filter((f) => f.available);
+      setFabrics(availableFabrics);
+
+      // Initialize random colors for each fabric
+      const initialColors: { [key: string]: number } = {};
+      availableFabrics.forEach((fabric) => {
+        initialColors[fabric.id] = Math.floor(
+          Math.random() * fabric.colors.length
+        );
+      });
+      setSelectedColors(initialColors);
+    } catch (error) {
+      console.error("Error loading fabrics:", error);
+    } finally {
+      setFabricsLoading(false);
+    }
+  };
+
+  const fabricCategories = [
+    { name: "All", count: fabrics.length },
+    {
+      name: "Cotton",
+      count: fabrics.filter((f) => f.category === "Cotton").length,
+    },
+    { name: "Silk", count: fabrics.filter((f) => f.category === "Silk").length },
+    {
+      name: "Linen",
+      count: fabrics.filter((f) => f.category === "Linen").length,
+    },
+    {
+      name: "Premium Blend",
+      count: fabrics.filter((f) => f.category === "Premium Blend").length,
+    },
+  ];
+
+  const displayedFabrics =
+    selectedCategory === "All"
+      ? fabrics
+      : fabrics.filter((f) => f.category === selectedCategory);
 
   const handleColorChange = (fabricId: string, colorIndex: number) => {
     setSelectedColors((prev) => ({

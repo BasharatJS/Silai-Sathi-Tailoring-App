@@ -88,7 +88,7 @@ export default function Header() {
               />
             </div>
             <span className="text-2xl font-bold text-navy">
-              Silai <span className="text-gold">Sathi</span>
+              7e<span className="text-gold">Online</span>
             </span>
           </motion.div>
 
