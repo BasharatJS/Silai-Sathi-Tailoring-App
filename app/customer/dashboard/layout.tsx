@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -325,7 +325,16 @@ export default function CustomerLayout({
 }) {
   return (
     <CustomerAuthProvider>
-      <CustomerLayoutContent>{children}</CustomerLayoutContent>
+      <Suspense fallback={
+        <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-navy via-charcoal to-navy">
+          <div className="text-center">
+            <div className="h-12 w-12 border-4 border-gold border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-white/60">Loading...</p>
+          </div>
+        </div>
+      }>
+        <CustomerLayoutContent>{children}</CustomerLayoutContent>
+      </Suspense>
     </CustomerAuthProvider>
   );
 }

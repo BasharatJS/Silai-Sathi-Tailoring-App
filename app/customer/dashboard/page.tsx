@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import {
   Shirt,
   FileText,
@@ -81,7 +82,7 @@ const services = [
   },
 ];
 
-export default function CustomerDashboard() {
+function CustomerDashboardContent() {
   const searchParams = useSearchParams();
   const activeView = searchParams.get("view") || "dashboard";
 
@@ -933,5 +934,21 @@ export default function CustomerDashboard() {
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+// Wrap in Suspense to handle useSearchParams
+export default function CustomerDashboard() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-gold mx-auto mb-4" />
+          <p className="text-charcoal/60">Loading dashboard...</p>
+        </div>
+      </div>
+    }>
+      <CustomerDashboardContent />
+    </Suspense>
   );
 }
