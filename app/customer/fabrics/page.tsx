@@ -174,7 +174,7 @@ export default function FabricsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+          className="grid sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6"
         >
           {displayedFabrics.map((fabric, index) => (
             <motion.div

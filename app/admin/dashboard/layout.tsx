@@ -12,6 +12,7 @@ import {
   X,
   TrendingUp,
   Palette,
+  ShoppingBag,
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 
@@ -48,11 +49,15 @@ export default function AdminLayout({
       href: "/admin/dashboard?view=orders",
       icon: Package,
     },
-    
     {
       name: "Fabric Collection",
       href: "/admin/dashboard?view=fabrics",
       icon: Palette,
+    },
+    {
+      name: "Products",
+      href: "/admin/dashboard?view=products",
+      icon: ShoppingBag,
     },
     {
       name: "Analytics",

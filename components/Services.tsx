@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { useInView } from "framer-motion";
 import { useRef } from "react";
-import { Shirt, FileText, Package, ArrowRight } from "lucide-react";
+import { Shirt, FileText, Package, ArrowRight, Scissors, Palette, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 
 const services = [
@@ -12,7 +12,7 @@ const services = [
     title: "Kurta Tailoring",
     description:
       "Expertly crafted kurtas with custom measurements and premium fabrics. Choose from traditional to contemporary designs.",
-    price: "₹650",
+    price: "₹300",
     features: ["Custom Measurements", "Premium Fabrics", "Traditional & Modern Designs"],
     gradient: "bg-navy",
     solidColor: true,
@@ -22,7 +22,7 @@ const services = [
     title: "Pyjama Tailoring",
     description:
       "Comfortable and perfectly fitted pyjamas tailored to your exact specifications. Multiple style options available.",
-    price: "₹450",
+    price: "₹200",
     features: ["Perfect Fit", "Comfortable Designs", "Multiple Styles"],
     gradient: "from-navy to-gold",
     popular: true,
@@ -32,10 +32,38 @@ const services = [
     title: "Complete Set",
     description:
       "Get the perfect kurta-pyjama combination with special pricing. Complete outfit solution for any occasion.",
-    price: "₹999",
+    price: "₹500",
     features: ["Kurta + Pyjama", "Matching Set", "Special Pricing"],
     gradient: "bg-navy",
     solidColor: true,
+  },
+  {
+    icon: Scissors,
+    title: "Stitching Only",
+    description:
+      "Have your own fabric? We'll stitch it perfectly for you. Expert tailoring with your material.",
+    price: "₹500",
+    features: ["Bring Your Fabric", "Expert Stitching", "Perfect Fit Guaranteed"],
+    gradient: "from-navy to-gold",
+  },
+  {
+    icon: Palette,
+    title: "Buy Fabric",
+    description:
+      "Shop from our premium collection of fabrics. High-quality materials perfect for any garment.",
+    price: "₹100/m",
+    features: ["Premium Quality", "Wide Variety", "Best Prices"],
+    gradient: "bg-navy",
+    solidColor: true,
+  },
+  {
+    icon: ShoppingBag,
+    title: "Buy Products",
+    description:
+      "Browse our ready-made collection. Quality products stitched with care and attention to detail.",
+    price: "₹100",
+    features: ["Ready to Wear", "Quality Assured", "Fast Delivery"],
+    gradient: "from-navy to-gold",
   },
 ];
 

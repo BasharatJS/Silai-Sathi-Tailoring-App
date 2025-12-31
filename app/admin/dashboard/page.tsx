@@ -22,6 +22,7 @@ import {
   Palette,
   Plus,
   Trash2,
+  ShoppingBag,
 } from "lucide-react";
 import {
   LineChart,
@@ -44,13 +45,21 @@ import { Order, OrderStatus } from "@/types/order";
 import { Input } from "@/components/ui/input";
 import OrderDetailModal from "@/components/OrderDetailModal";
 import AddEditFabricModal from "@/components/AddEditFabricModal";
+import AddEditProductModal from "@/components/AddEditProductModal";
 import { Fabric, fabrics as staticFabrics } from "@/lib/fabricData";
+import { Product, ProductCategory, sampleProducts } from "@/lib/productData";
 import {
   getAllFabrics,
   createFabric,
   updateFabric,
   deleteFabric,
 } from "@/services/fabricService";
+import {
+  getAllProducts,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+} from "@/services/productService";
 
 const statusConfig: Record<
   OrderStatus,
@@ -117,6 +126,14 @@ export default function AdminDashboard() {
     [key: string]: number;
   }>({});
 
+  // Product state
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isMigratingProducts, setIsMigratingProducts] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<ProductCategory | "All">("All");
+
   useEffect(() => {
     loadOrders();
     loadStats();
@@ -125,6 +142,9 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (activeView === "fabrics") {
       loadFabrics();
+    }
+    if (activeView === "products") {
+      loadProducts();
     }
   }, [activeView]);
 
@@ -241,6 +261,85 @@ export default function AdminDashboard() {
       ...prev,
       [fabricId]: colorIndex,
     }));
+  };
+
+  // Product handlers
+  const loadProducts = async () => {
+    try {
+      setProductsLoading(true);
+      const fetchedProducts = await getAllProducts();
+      setProducts(fetchedProducts);
+    } catch (error) {
+      console.error("Error loading products:", error);
+    } finally {
+      setProductsLoading(false);
+    }
+  };
+
+  const handleSaveProduct = async (productData: Omit<Product, "id">) => {
+    try {
+      if (selectedProduct) {
+        await updateProduct(selectedProduct.id, productData);
+      } else {
+        await createProduct(productData);
+      }
+      await loadProducts();
+      setShowProductModal(false);
+      setSelectedProduct(null);
+    } catch (error) {
+      console.error("Error saving product:", error);
+      throw error;
+    }
+  };
+
+  const handleDeleteProduct = async (productId: string) => {
+    if (!confirm("Are you sure you want to delete this product?")) {
+      return;
+    }
+
+    try {
+      await deleteProduct(productId);
+      await loadProducts();
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      alert("Failed to delete product. Please try again.");
+    }
+  };
+
+  const handleMigrateSampleProducts = async () => {
+    if (
+      !confirm(
+        `This will add ${sampleProducts.length} sample products to Firebase. Continue?`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setIsMigratingProducts(true);
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const product of sampleProducts) {
+        try {
+          await createProduct(product);
+          successCount++;
+        } catch (error) {
+          console.error(`Error migrating product ${product.name}:`, error);
+          errorCount++;
+        }
+      }
+
+      alert(
+        `Migration complete!\nSuccess: ${successCount}\nErrors: ${errorCount}`
+      );
+      await loadProducts();
+    } catch (error) {
+      console.error("Error during product migration:", error);
+      alert("Product migration failed. Please try again.");
+    } finally {
+      setIsMigratingProducts(false);
+    }
   };
 
   const filteredOrders = orders.filter((order) => {
@@ -994,7 +1093,7 @@ export default function AdminDashboard() {
               </div>
             </motion.div>
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 md:gap-6">
               {fabrics.map((fabric, index) => (
                 <motion.div
                   key={fabric.id}
@@ -1108,6 +1207,266 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {/* Products View */}
+      {activeView === "products" && (
+        <div className="space-y-6 md:space-y-8">
+          {/* Header with Add Button */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <ShoppingBag className="h-6 w-6 md:h-8 md:w-8 text-navy" />
+              <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-navy">
+                Products ({products.length})
+              </h2>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {/* Migration Button */}
+              {products.length === 0 && !productsLoading && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleMigrateSampleProducts}
+                  disabled={isMigratingProducts}
+                  className="px-4 md:px-6 py-2 md:py-3 bg-gradient-to-r from-orange-500 to-gold text-white rounded-lg md:rounded-xl font-semibold hover:from-orange-600 hover:to-gold transition-all cursor-pointer text-sm md:text-base flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isMigratingProducts ? (
+                    <>
+                      <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Migrating...
+                    </>
+                  ) : (
+                    <>
+                      <Package className="h-4 w-4 md:h-5 md:w-5" />
+                      Import {sampleProducts.length} Products
+                    </>
+                  )}
+                </motion.button>
+              )}
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  setSelectedProduct(null);
+                  setShowProductModal(true);
+                }}
+                className="px-4 md:px-6 py-2 md:py-3 bg-navy text-white rounded-lg md:rounded-xl font-semibold hover:bg-gold transition-all cursor-pointer text-sm md:text-base flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4 md:h-5 md:w-5" />
+                Add New Product
+              </motion.button>
+            </div>
+          </div>
+
+          {/* Category Filter */}
+          <div className="flex flex-wrap gap-2">
+            {(["All", "Janamaz", "Topi", "Atar", "Leather Shocks"] as const).map(
+              (category) => (
+                <button
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                    selectedCategory === category
+                      ? "bg-navy text-white"
+                      : "bg-white text-charcoal hover:bg-gray-100"
+                  }`}
+                >
+                  {category} (
+                  {category === "All"
+                    ? products.length
+                    : products.filter((p) => p.category === category).length}
+                  )
+                </button>
+              )
+            )}
+          </div>
+
+          {/* Products Grid */}
+          {productsLoading ? (
+            <div className="text-center py-12">
+              <div className="inline-block h-12 w-12 border-4 border-gold border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-charcoal/60 mt-4">Loading products...</p>
+            </div>
+          ) : products.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-xl md:rounded-2xl shadow-lg p-8 border border-gray-100 text-center"
+            >
+              <ShoppingBag className="h-16 w-16 text-charcoal/20 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-navy mb-2">
+                No Products Yet
+              </h3>
+              <p className="text-charcoal/70 mb-6">
+                Start building your product catalog by importing sample products
+                or adding a new one.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <button
+                  onClick={handleMigrateSampleProducts}
+                  disabled={isMigratingProducts}
+                  className="px-6 py-3 bg-gradient-to-r from-orange-500 to-gold text-white rounded-lg font-semibold hover:from-orange-600 hover:to-gold transition-all inline-flex items-center gap-2 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isMigratingProducts ? (
+                    <>
+                      <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Importing {sampleProducts.length} products...
+                    </>
+                  ) : (
+                    <>
+                      <Package className="h-5 w-5" />
+                      Import {sampleProducts.length} Sample Products
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedProduct(null);
+                    setShowProductModal(true);
+                  }}
+                  className="px-6 py-3 bg-navy text-white rounded-lg font-semibold hover:bg-gold transition-all inline-flex items-center gap-2 justify-center"
+                >
+                  <Plus className="h-5 w-5" />
+                  Add New Product
+                </button>
+              </div>
+            </motion.div>
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 md:gap-6">
+              {products
+                .filter(
+                  (product) =>
+                    selectedCategory === "All" ||
+                    product.category === selectedCategory
+                )
+                .map((product, index) => (
+                  <motion.div
+                    key={product.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: index * 0.05 }}
+                    className="bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all border border-gray-100 overflow-hidden group"
+                  >
+                    {/* Product Image */}
+                    <div className="h-48 relative overflow-hidden">
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                      />
+                      <div className="absolute top-2 right-2 flex gap-2">
+                        {!product.available && (
+                          <span className="px-2 py-1 bg-red-500 text-white text-xs font-semibold rounded">
+                            Unavailable
+                          </span>
+                        )}
+                        {product.salePrice && (
+                          <span className="px-2 py-1 bg-green-500 text-white text-xs font-semibold rounded">
+                            Sale
+                          </span>
+                        )}
+                      </div>
+                      <div className="absolute bottom-2 left-2">
+                        <span className="px-2 py-1 bg-navy/80 text-white text-xs font-semibold rounded">
+                          {product.category}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Product Info */}
+                    <div className="p-4">
+                      {/* Color Variants */}
+                      {product.colors && product.colors.length > 0 && (
+                        <div className="flex items-center gap-1.5 mb-3">
+                          {product.colors.slice(0, 5).map((color, idx) => (
+                            <div
+                              key={idx}
+                              className="w-6 h-6 rounded-full border-2 border-gray-200"
+                              style={{ backgroundColor: color.colorCode }}
+                              title={color.name}
+                            />
+                          ))}
+                          {product.colors.length > 5 && (
+                            <span className="text-xs text-charcoal/60">
+                              +{product.colors.length - 5}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      <h3 className="font-bold text-navy mb-1 text-lg">
+                        {product.name}
+                      </h3>
+                      <p className="text-sm text-charcoal/70 mb-3 line-clamp-2">
+                        {product.description}
+                      </p>
+
+                      {/* Price */}
+                      <div className="flex items-center gap-2 mb-3">
+                        {product.salePrice ? (
+                          <>
+                            <span className="text-gold font-bold text-xl">
+                              ₹{product.salePrice}
+                            </span>
+                            <span className="text-charcoal/60 text-sm line-through">
+                              ₹{product.price}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-gold font-bold text-xl">
+                            ₹{product.price}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Stock */}
+                      <div className="mb-3">
+                        <span className="text-xs text-charcoal/60">
+                          Stock: {product.stock} {product.quantityMl && `(${product.quantityMl}ml)`}
+                        </span>
+                      </div>
+
+                      {/* Sizes (for shoes) */}
+                      {product.sizes && product.sizes.length > 0 && (
+                        <div className="mb-3">
+                          <p className="text-xs text-charcoal/60 mb-1">Sizes:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {product.sizes.map((size, idx) => (
+                              <span
+                                key={idx}
+                                className="px-2 py-1 bg-gray-100 text-charcoal text-xs rounded"
+                              >
+                                {size.size} ({size.stock})
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Actions */}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setSelectedProduct(product);
+                            setShowProductModal(true);
+                          }}
+                          className="flex-1 py-2 bg-navy text-white rounded-lg text-sm font-semibold hover:bg-gold transition-all"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteProduct(product.id)}
+                          className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-semibold hover:bg-red-100 transition-all"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Order Detail Modal */}
       <AnimatePresence>
         {selectedOrder && (
@@ -1132,6 +1491,20 @@ export default function AdminDashboard() {
               setSelectedFabric(null);
             }}
             onSave={handleSaveFabric}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Add/Edit Product Modal */}
+      <AnimatePresence>
+        {showProductModal && (
+          <AddEditProductModal
+            product={selectedProduct}
+            onClose={() => {
+              setShowProductModal(false);
+              setSelectedProduct(null);
+            }}
+            onSave={handleSaveProduct}
           />
         )}
       </AnimatePresence>

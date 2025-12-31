@@ -119,17 +119,17 @@ export default function Header() {
 
           {/* Action Buttons */}
           <div className="hidden md:flex items-center gap-3">
-            <AdminLoginDialog />
-            {/* <Link href="/customer/dashboard">
+            <Link href="/customer/dashboard">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="px-4 py-2 bg-navy text-white rounded-full font-medium hover:bg-gold transition-colors shadow-lg hover:shadow-xl flex items-center gap-2 cursor-pointer"
+                className="px-6 py-2.5 bg-gradient-to-r from-navy to-gold text-white rounded-full font-semibold hover:shadow-xl transition-all shadow-lg flex items-center gap-2 cursor-pointer"
               >
-                <LayoutDashboard className="h-4 w-4" />
-                My Dashboard
+                <Scissors className="h-4 w-4" />
+                Order Now
               </motion.button>
-            </Link> */}
+            </Link>
+            <AdminLoginDialog />
           </div>
 
           {/* Mobile Menu Button */}
@@ -180,13 +180,13 @@ export default function Header() {
                 transition={{ delay: navLinks.length * 0.1 }}
                 className="mt-2 space-y-2"
               >
-                <AdminLoginDialog />
                 <Link href="/customer/dashboard" className="block">
-                  <button className="w-full px-4 py-3 bg-navy text-white rounded-lg font-medium hover:bg-gold transition-colors flex items-center justify-center gap-2 cursor-pointer">
-                    <LayoutDashboard className="h-4 w-4" />
-                    My Dashboard
+                  <button className="w-full px-4 py-3 bg-gradient-to-r from-navy to-gold text-white rounded-lg font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer">
+                    <Scissors className="h-4 w-4" />
+                    Order Now
                   </button>
                 </Link>
+                <AdminLoginDialog />
               </motion.div>
             </nav>
           </motion.div>
