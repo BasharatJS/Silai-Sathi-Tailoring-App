@@ -4,9 +4,6 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-
-// Force dynamic rendering to avoid prerendering issues
-export const dynamic = 'force-dynamic';
 import {
   LayoutDashboard,
   Palette,

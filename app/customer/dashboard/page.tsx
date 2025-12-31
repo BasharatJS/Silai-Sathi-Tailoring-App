@@ -3,10 +3,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import dynamic from "next/dynamic";
-
-// Force dynamic rendering to avoid prerendering issues
-export const dynamic = 'force-dynamic';
 import {
   Shirt,
   FileText,
