@@ -9,6 +9,7 @@ import {
   logoutCustomer,
   CustomerProfile,
 } from "@/services/customerAuthService";
+import { enableFirestorePersistence } from "@/lib/firebase";
 
 interface CustomerAuthContextType {
   user: User | null;
@@ -33,6 +34,9 @@ export const CustomerAuthProvider = ({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Enable Firestore offline persistence
+    enableFirestorePersistence();
+
     // Check for email link sign-in on mount
     const checkEmailLink = async () => {
       if (typeof window !== 'undefined') {
