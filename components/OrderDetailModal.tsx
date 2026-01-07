@@ -240,18 +240,49 @@ export default function OrderDetailModal({
                   {order.service.price.toLocaleString("en-IN")}
                 </span>
               </div>
-              <div className="pt-4 border-t border-purple-200">
-                <p className="text-sm text-charcoal/60 mb-2">Style</p>
-                <p className="font-semibold text-charcoal">
-                  {order.customization.styleName}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-charcoal/60 mb-2">Button Type</p>
-                <p className="font-semibold text-charcoal">
-                  {order.customization.buttonTypeName}
-                </p>
-              </div>
+
+              {/* Kurta Style */}
+              {order.customization?.kurtaStyleName && (
+                <div className="pt-4 border-t border-purple-200">
+                  <p className="text-sm text-charcoal/60 mb-2">Kurta Style</p>
+                  <p className="font-semibold text-charcoal">
+                    {order.customization.kurtaStyleName}
+                  </p>
+                </div>
+              )}
+
+              {/* Pyjama Style */}
+              {order.customization?.pyjamaStyleName && (
+                <div className={order.customization?.kurtaStyleName ? "" : "pt-4 border-t border-purple-200"}>
+                  <p className="text-sm text-charcoal/60 mb-2">Pyjama Style</p>
+                  <p className="font-semibold text-charcoal">
+                    {order.customization.pyjamaStyleName}
+                  </p>
+                </div>
+              )}
+
+              {/* Button Image */}
+              {order.customization?.hasButtonImage && (
+                <div>
+                  <p className="text-sm text-charcoal/60 mb-2">Button</p>
+                  {order.customization.buttonImageUrl ? (
+                    <div className="space-y-2">
+                      <img
+                        src={order.customization.buttonImageUrl}
+                        alt="Custom button"
+                        className="w-32 h-32 rounded-lg object-cover border-2 border-gold shadow-md"
+                      />
+                      <p className="text-xs text-charcoal/60">
+                        {order.customization.buttonImageNote}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="font-semibold text-charcoal">
+                      {order.customization.buttonImageNote}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -299,18 +330,44 @@ export default function OrderDetailModal({
               <Ruler className="h-5 w-5" />
               Measurements (inches)
             </h4>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {Object.entries(order.measurements).map(([key, value]) => (
-                <div key={key}>
-                  <p className="text-sm text-charcoal/60 mb-1 capitalize">
-                    {key}
-                  </p>
-                  <p className="font-semibold text-charcoal text-lg">
-                    {value || "N/A"}
-                  </p>
+
+            {/* Kurta Measurements */}
+            {order.measurements?.kurta && (
+              <div className="mb-6">
+                <p className="text-sm font-semibold text-charcoal mb-3">Kurta:</p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {Object.entries(order.measurements.kurta).map(([key, value]) => (
+                    <div key={key}>
+                      <p className="text-sm text-charcoal/60 mb-1 capitalize">
+                        {key}
+                      </p>
+                      <p className="font-semibold text-charcoal text-lg">
+                        {String(value) || "N/A"}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
+
+            {/* Pyjama Measurements */}
+            {order.measurements?.pyjama && (
+              <div>
+                <p className="text-sm font-semibold text-charcoal mb-3">Pyjama:</p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {Object.entries(order.measurements.pyjama).map(([key, value]) => (
+                    <div key={key}>
+                      <p className="text-sm text-charcoal/60 mb-1 capitalize">
+                        {key}
+                      </p>
+                      <p className="font-semibold text-charcoal text-lg">
+                        {String(value) || "N/A"}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Pricing Summary */}

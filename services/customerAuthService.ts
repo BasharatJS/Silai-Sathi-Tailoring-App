@@ -120,7 +120,26 @@ export const verifyPhoneOTP = async (
       timeoutPromise
     ]);
 
-    return result.user;
+    const user = result.user;
+
+    // Create/update customer profile in Firestore
+    try {
+      const existingProfile = await getCustomerProfile(user.uid);
+      if (!existingProfile) {
+        // Create new customer profile
+        await saveCustomerProfile(user.uid, {
+          uid: user.uid,
+          phoneNumber: user.phoneNumber || undefined,
+          email: user.email || undefined,
+          profileCompleted: false,
+        });
+      }
+    } catch (error) {
+      console.error('Error creating customer profile:', error);
+      // Don't throw - user is still authenticated
+    }
+
+    return user;
   } catch (error: any) {
     console.error('Error verifying phone OTP:', error);
 
@@ -178,7 +197,26 @@ export const verifyEmailLink = async (emailLink?: string): Promise<User | null> 
       // Clear email from storage
       window.localStorage.removeItem('emailForSignIn');
 
-      return result.user;
+      const user = result.user;
+
+      // Create/update customer profile in Firestore
+      try {
+        const existingProfile = await getCustomerProfile(user.uid);
+        if (!existingProfile) {
+          // Create new customer profile
+          await saveCustomerProfile(user.uid, {
+            uid: user.uid,
+            email: user.email || undefined,
+            phoneNumber: user.phoneNumber || undefined,
+            profileCompleted: false,
+          });
+        }
+      } catch (error) {
+        console.error('Error creating customer profile:', error);
+        // Don't throw - user is still authenticated
+      }
+
+      return user;
     }
 
     return null;

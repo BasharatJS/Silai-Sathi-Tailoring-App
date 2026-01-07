@@ -13,9 +13,11 @@ import { Label } from "@/components/ui/label";
 import { createFabricOnlyOrder } from "@/services/orderService";
 import { FabricOnlyOrderData } from "@/types/order";
 import OrderSuccessModal from "@/components/OrderSuccessModal";
+import { useCustomerAuth } from "@/contexts/CustomerAuthContext";
 
 function BuyFabricContent() {
   const searchParams = useSearchParams();
+  const { user } = useCustomerAuth(); // Get customer UID for order tracking
   const fabricId = searchParams.get("id");
   const colorIndex = parseInt(searchParams.get("colorIndex") || "0");
   const [fabric, setFabric] = useState<Fabric | null>(null);
@@ -74,6 +76,7 @@ function BuyFabricContent() {
         fabricQuantity: quantity,
         selectedFabricColorIndex: colorIndex,
         address,
+        customerUid: user?.uid, // Add customer UID for reliable order tracking
       };
 
       const result = await createFabricOnlyOrder(formData);

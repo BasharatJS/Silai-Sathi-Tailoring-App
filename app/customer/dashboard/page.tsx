@@ -27,6 +27,10 @@ import { Fabric } from "@/lib/fabricData";
 import { Product } from "@/lib/productData";
 import { getAllFabrics } from "@/services/fabricService";
 import { getAllProducts } from "@/services/productService";
+import { getAllOrders, getOrdersByCustomerUid } from "@/services/orderService";
+import { getProductOrdersByCustomer } from "@/services/productOrderService";
+import { Order } from "@/types/order";
+import { ProductOrder } from "@/services/productOrderService";
 import FabricDetailModal from "@/components/FabricDetailModal";
 import PyjamaIcon from "@/components/icons/PyjamaIcon";
 import { useCustomerAuth } from "@/contexts/CustomerAuthContext";
@@ -36,7 +40,7 @@ const services = [
     icon: Shirt,
     title: "Kurta Tailoring",
     description: "Custom-made kurtas with premium fabrics",
-    price: "₹300",
+    price: "₹650",
     gradient: "from-navy to-gold",
     href: "/customer/order/new?service=kurta",
   },
@@ -44,7 +48,7 @@ const services = [
     icon: PyjamaIcon,
     title: "Pyjama Tailoring",
     description: "Perfectly fitted comfortable pyjamas",
-    price: "₹200",
+    price: "₹450",
     gradient: "from-navy to-gold",
     href: "/customer/order/new?service=pyjama",
   },
@@ -52,7 +56,7 @@ const services = [
     icons: [Shirt, PyjamaIcon],
     title: "Complete Set",
     description: "Kurta + Pyjama combo with special pricing",
-    price: "₹500",
+    price: "₹999",
     gradient: "from-navy to-gold",
     href: "/customer/order/new?service=complete",
   },
@@ -111,6 +115,11 @@ function CustomerDashboardContent() {
     [key: string]: number;
   }>({});
 
+  // Orders state
+  const [fabricOrders, setFabricOrders] = useState<Order[]>([]);
+  const [productOrders, setProductOrders] = useState<ProductOrder[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+
   // Update profile data when profile changes
   useEffect(() => {
     if (profile) {
@@ -149,6 +158,13 @@ function CustomerDashboardContent() {
     };
   }, []);
 
+  // Load orders when viewing orders page
+  useEffect(() => {
+    if (activeView === "orders") {
+      loadOrders();
+    }
+  }, [activeView, profile, user]);
+
   const loadFabrics = async () => {
     try {
       setFabricsLoading(true);
@@ -180,6 +196,34 @@ function CustomerDashboardContent() {
       console.error("Error loading products:", error);
     } finally {
       setProductsLoading(false);
+    }
+  };
+
+  const loadOrders = async () => {
+    if (!user?.uid) {
+      setOrdersLoading(false);
+      return;
+    }
+
+    try {
+      setOrdersLoading(true);
+
+      // Fetch fabric stitching orders by customer UID (most reliable)
+      const customerFabricOrders = await getOrdersByCustomerUid(user.uid);
+      setFabricOrders(customerFabricOrders);
+
+      // Fetch product orders by phone number (fallback for product orders)
+      const phoneNumber = profile?.phoneNumber || user?.phoneNumber || "";
+      if (phoneNumber) {
+        const customerProductOrders = await getProductOrdersByCustomer(phoneNumber);
+        setProductOrders(customerProductOrders);
+      } else {
+        setProductOrders([]);
+      }
+    } catch (error) {
+      console.error("Error loading orders:", error);
+    } finally {
+      setOrdersLoading(false);
     }
   };
 
@@ -277,55 +321,66 @@ function CustomerDashboardContent() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.8 + index * 0.1 }}
-                onClick={() => setSelectedFabric(fabric)}
-                className="bg-white rounded-lg shadow hover:shadow-xl transition-all cursor-pointer border border-gray-100 overflow-hidden"
+                className="bg-white rounded-lg shadow hover:shadow-xl transition-all border border-gray-100 overflow-hidden"
               >
-                <div
-                  className="h-32 relative"
-                  style={{
-                    backgroundColor: selectedColor?.colorCode || '#f3f4f6'
-                  }}
-                >
-                  <div className="absolute inset-0 opacity-30">
-                    <svg width="100%" height="100%">
-                      <defs>
-                        <pattern
-                          id={`pattern-featured-${fabric.id}`}
-                          x="0"
-                          y="0"
-                          width="20"
-                          height="20"
-                          patternUnits="userSpaceOnUse"
-                        >
-                          <circle cx="2" cy="2" r="1" fill="currentColor" />
-                        </pattern>
-                      </defs>
-                      <rect
-                        width="100%"
-                        height="100%"
-                        fill={`url(#pattern-featured-${fabric.id})`}
-                      />
-                    </svg>
+                <div>
+                  <div
+                    className="h-32 relative"
+                    style={{
+                      backgroundColor: selectedColor?.colorCode || '#f3f4f6'
+                    }}
+                  >
+                    <div className="absolute inset-0 opacity-30">
+                      <svg width="100%" height="100%">
+                        <defs>
+                          <pattern
+                            id={`pattern-featured-${fabric.id}`}
+                            x="0"
+                            y="0"
+                            width="20"
+                            height="20"
+                            patternUnits="userSpaceOnUse"
+                          >
+                            <circle cx="2" cy="2" r="1" fill="currentColor" />
+                          </pattern>
+                        </defs>
+                        <rect
+                          width="100%"
+                          height="100%"
+                          fill={`url(#pattern-featured-${fabric.id})`}
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      {fabric.colors.slice(0, 5).map((color, idx) => (
+                        <div
+                          key={idx}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleColorChange(fabric.id, idx);
+                          }}
+                          className="w-5 h-5 rounded-full border-2 border-gray-200 cursor-pointer hover:scale-110 transition-transform"
+                          style={{ backgroundColor: color.colorCode }}
+                          title={color.name}
+                        />
+                      ))}
+                    </div>
+                    <h4 className="font-bold text-navy mb-1">{fabric.name}</h4>
+                    <p className="text-sm text-charcoal/60 mb-2">{fabric.category}</p>
+                    <p className="text-gold font-bold mb-3">₹{fabric.pricePerMeter}/m</p>
                   </div>
                 </div>
-                <div className="p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    {fabric.colors.slice(0, 5).map((color, idx) => (
-                      <div
-                        key={idx}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleColorChange(fabric.id, idx);
-                        }}
-                        className="w-5 h-5 rounded-full border-2 border-gray-200 cursor-pointer hover:scale-110 transition-transform"
-                        style={{ backgroundColor: color.colorCode }}
-                        title={color.name}
-                      />
-                    ))}
-                  </div>
-                  <h4 className="font-bold text-navy mb-1">{fabric.name}</h4>
-                  <p className="text-sm text-charcoal/60 mb-2">{fabric.category}</p>
-                  <p className="text-gold font-bold">₹{fabric.pricePerMeter}/m</p>
+                <div className="px-4 pb-4">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setSelectedFabric(fabric)}
+                    className="w-full py-2 bg-gradient-to-r from-navy to-gold text-white rounded-lg font-semibold hover:shadow-lg transition-all text-sm cursor-pointer"
+                  >
+                    Buy Now
+                  </motion.button>
                 </div>
               </motion.div>
             );
@@ -355,30 +410,43 @@ function CustomerDashboardContent() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.1 + index * 0.1 }}
-              className="bg-white rounded-lg shadow hover:shadow-xl transition-all border border-gray-100"
+              className="bg-white rounded-lg shadow hover:shadow-xl transition-all border border-gray-100 overflow-hidden"
             >
-              <img
-                src={product.image}
-                alt={product.name}
-                className="h-32 w-full object-cover rounded-t-lg"
-              />
-              <div className="p-4">
-                <h4 className="font-bold text-navy mb-1 line-clamp-1">
-                  {product.name}
-                </h4>
-                <p className="text-sm text-charcoal/60 mb-2">{product.category}</p>
-                <div className="flex items-center gap-2">
-                  {product.salePrice ? (
-                    <>
-                      <p className="text-gold font-bold">₹{product.salePrice}</p>
-                      <p className="text-xs text-charcoal/60 line-through">
-                        ₹{product.price}
-                      </p>
-                    </>
-                  ) : (
-                    <p className="text-gold font-bold">₹{product.price}</p>
-                  )}
+              <div>
+                <img
+                  src={product.image}
+                  alt={product.name}
+                  className="h-32 w-full object-cover"
+                />
+                <div className="p-4">
+                  <h4 className="font-bold text-navy mb-1 line-clamp-1">
+                    {product.name}
+                  </h4>
+                  <p className="text-sm text-charcoal/60 mb-2">{product.category}</p>
+                  <div className="flex items-center gap-2 mb-3">
+                    {product.salePrice ? (
+                      <>
+                        <p className="text-gold font-bold">₹{product.salePrice}</p>
+                        <p className="text-xs text-charcoal/60 line-through">
+                          ₹{product.price}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-gold font-bold">₹{product.price}</p>
+                    )}
+                  </div>
                 </div>
+              </div>
+              <div className="px-4 pb-4">
+                <Link href={`/customer/products/${product.id}`}>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="w-full py-2 bg-gradient-to-r from-navy to-gold text-white rounded-lg font-semibold hover:shadow-lg transition-all text-sm cursor-pointer"
+                  >
+                    Buy Now
+                  </motion.button>
+                </Link>
               </div>
             </motion.div>
           ))}
@@ -431,62 +499,73 @@ function CustomerDashboardContent() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  onClick={() => setSelectedFabric(fabric)}
-                  className="bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all cursor-pointer border border-gray-100 overflow-hidden"
+                  className="bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all border border-gray-100 overflow-hidden"
                 >
-                  <div
-                    className="h-48 relative"
-                    style={{
-                      backgroundColor: selectedColor?.colorCode || '#f3f4f6'
-                    }}
-                  >
-                    <div className="absolute inset-0 opacity-30">
-                      <svg width="100%" height="100%">
-                        <defs>
-                          <pattern
-                            id={`pattern-${fabric.id}`}
-                            x="0"
-                            y="0"
-                            width="20"
-                            height="20"
-                            patternUnits="userSpaceOnUse"
-                          >
-                            <circle cx="2" cy="2" r="1" fill="currentColor" />
-                          </pattern>
-                      </defs>
-                      <rect
-                        width="100%"
-                        height="100%"
-                        fill={`url(#pattern-${fabric.id})`}
-                      />
-                    </svg>
+                  <div>
+                    <div
+                      className="h-48 relative"
+                      style={{
+                        backgroundColor: selectedColor?.colorCode || '#f3f4f6'
+                      }}
+                    >
+                      <div className="absolute inset-0 opacity-30">
+                        <svg width="100%" height="100%">
+                          <defs>
+                            <pattern
+                              id={`pattern-${fabric.id}`}
+                              x="0"
+                              y="0"
+                              width="20"
+                              height="20"
+                              patternUnits="userSpaceOnUse"
+                            >
+                              <circle cx="2" cy="2" r="1" fill="currentColor" />
+                            </pattern>
+                        </defs>
+                        <rect
+                          width="100%"
+                          height="100%"
+                          fill={`url(#pattern-${fabric.id})`}
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                  <div className="p-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      {fabric.colors.slice(0, 5).map((color, idx) => (
+                        <div
+                          key={idx}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleColorChange(fabric.id, idx);
+                          }}
+                          className="w-6 h-6 rounded-full border-2 border-gray-200 cursor-pointer hover:scale-110 transition-transform"
+                          style={{ backgroundColor: color.colorCode }}
+                          title={color.name}
+                        />
+                      ))}
+                    </div>
+                    <h3 className="font-bold text-navy mb-1 text-lg">
+                      {fabric.name}
+                    </h3>
+                    <p className="text-sm text-charcoal/60 mb-3">{fabric.category}</p>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-gold font-bold text-xl">
+                        ₹{fabric.pricePerMeter}
+                      </span>
+                      <span className="text-xs text-charcoal/60">/meter</span>
+                    </div>
                   </div>
                 </div>
-                <div className="p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    {fabric.colors.slice(0, 5).map((color, idx) => (
-                      <div
-                        key={idx}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleColorChange(fabric.id, idx);
-                        }}
-                        className="w-6 h-6 rounded-full border-2 border-gray-200 cursor-pointer hover:scale-110 transition-transform"
-                        style={{ backgroundColor: color.colorCode }}
-                        title={color.name}
-                      />
-                    ))}
-                  </div>
-                  <h3 className="font-bold text-navy mb-1 text-lg">
-                    {fabric.name}
-                  </h3>
-                  <p className="text-sm text-charcoal/60 mb-3">{fabric.category}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gold font-bold text-xl">
-                      ₹{fabric.pricePerMeter}
-                    </span>
-                    <span className="text-xs text-charcoal/60">/meter</span>
-                  </div>
+                <div className="px-5 pb-5">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setSelectedFabric(fabric)}
+                    className="w-full py-2.5 bg-gradient-to-r from-navy to-gold text-white rounded-lg font-semibold hover:shadow-lg transition-all cursor-pointer"
+                  >
+                    Buy Now
+                  </motion.button>
                 </div>
               </motion.div>
               );
@@ -515,58 +594,71 @@ function CustomerDashboardContent() {
               transition={{ delay: index * 0.05 }}
               className="bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all border border-gray-100 overflow-hidden"
             >
-              <div className="h-56 relative">
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className="w-full h-full object-cover"
-                />
-                {product.salePrice && (
-                  <div className="absolute top-2 right-2">
-                    <span className="px-2 py-1 bg-green-500 text-white text-xs font-semibold rounded">
-                      Sale
+              <div>
+                <div className="h-56 relative">
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                  />
+                  {product.salePrice && (
+                    <div className="absolute top-2 right-2">
+                      <span className="px-2 py-1 bg-green-500 text-white text-xs font-semibold rounded">
+                        Sale
+                      </span>
+                    </div>
+                  )}
+                  <div className="absolute bottom-2 left-2">
+                    <span className="px-3 py-1 bg-navy/90 text-white text-sm font-semibold rounded-lg">
+                      {product.category}
                     </span>
                   </div>
-                )}
-                <div className="absolute bottom-2 left-2">
-                  <span className="px-3 py-1 bg-navy/90 text-white text-sm font-semibold rounded-lg">
-                    {product.category}
-                  </span>
                 </div>
-              </div>
-              <div className="p-5">
-                {product.colors && product.colors.length > 0 && (
-                  <div className="flex items-center gap-2 mb-3">
-                    {product.colors.slice(0, 5).map((color, idx) => (
-                      <div
-                        key={idx}
-                        className="w-6 h-6 rounded-full border-2 border-gray-200"
-                        style={{ backgroundColor: color.colorCode }}
-                        title={color.name}
-                      />
-                    ))}
-                  </div>
-                )}
-                <h3 className="font-bold text-navy mb-2 text-xl">{product.name}</h3>
-                <p className="text-sm text-charcoal/70 mb-4 line-clamp-2">
-                  {product.description}
-                </p>
-                <div className="flex items-center gap-3">
-                  {product.salePrice ? (
-                    <>
+                <div className="p-5">
+                  {product.colors && product.colors.length > 0 && (
+                    <div className="flex items-center gap-2 mb-3">
+                      {product.colors.slice(0, 5).map((color, idx) => (
+                        <div
+                          key={idx}
+                          className="w-6 h-6 rounded-full border-2 border-gray-200"
+                          style={{ backgroundColor: color.colorCode }}
+                          title={color.name}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  <h3 className="font-bold text-navy mb-2 text-xl">{product.name}</h3>
+                  <p className="text-sm text-charcoal/70 mb-4 line-clamp-2">
+                    {product.description}
+                  </p>
+                  <div className="flex items-center gap-3 mb-3">
+                    {product.salePrice ? (
+                      <>
+                        <span className="text-gold font-bold text-2xl">
+                          ₹{product.salePrice}
+                        </span>
+                        <span className="text-charcoal/60 text-base line-through">
+                          ₹{product.price}
+                        </span>
+                      </>
+                    ) : (
                       <span className="text-gold font-bold text-2xl">
-                        ₹{product.salePrice}
-                      </span>
-                      <span className="text-charcoal/60 text-base line-through">
                         ₹{product.price}
                       </span>
-                    </>
-                  ) : (
-                    <span className="text-gold font-bold text-2xl">
-                      ₹{product.price}
-                    </span>
-                  )}
+                    )}
+                  </div>
                 </div>
+              </div>
+              <div className="px-5 pb-5">
+                <Link href={`/customer/products/${product.id}`}>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="w-full py-2.5 bg-gradient-to-r from-navy to-gold text-white rounded-lg font-semibold hover:shadow-lg transition-all cursor-pointer"
+                  >
+                    Buy Now
+                  </motion.button>
+                </Link>
               </div>
             </motion.div>
           ))}
@@ -576,37 +668,59 @@ function CustomerDashboardContent() {
   );
 
   // Analytics View
-  const renderAnalyticsView = () => (
-    <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-xl shadow-lg p-6 border border-gray-100"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-charcoal/60 mb-1">Total Orders</p>
-              <p className="text-3xl font-bold text-navy">0</p>
-            </div>
-            <Package className="h-12 w-12 text-navy/20" />
-          </div>
-        </motion.div>
+  const renderAnalyticsView = () => {
+    const totalOrders = fabricOrders.length + productOrders.length;
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white rounded-xl shadow-lg p-6 border border-gray-100"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-charcoal/60 mb-1">In Progress</p>
-              <p className="text-3xl font-bold text-orange">0</p>
+    // Calculate in progress orders
+    const inProgressOrders = [
+      ...fabricOrders.filter(o => o.status === 'in_progress' || o.status === 'confirmed'),
+      ...productOrders.filter(o => o.status === 'processing' || o.status === 'confirmed' || o.status === 'shipped')
+    ].length;
+
+    // Calculate delivered orders
+    const deliveredOrders = [
+      ...fabricOrders.filter(o => o.status === 'delivered'),
+      ...productOrders.filter(o => o.status === 'delivered')
+    ].length;
+
+    // Calculate total spent
+    const totalSpent = fabricOrders.reduce((sum, o) => sum + o.pricing.totalCost, 0) +
+                       productOrders.reduce((sum, o) => sum + o.pricing.total, 0);
+
+    // Calculate average order value
+    const avgOrderValue = totalOrders > 0 ? Math.round(totalSpent / totalOrders) : 0;
+
+    return (
+      <div className="space-y-6">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-xl shadow-lg p-6 border border-gray-100"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-charcoal/60 mb-1">Total Orders</p>
+                <p className="text-3xl font-bold text-navy">{totalOrders}</p>
+              </div>
+              <Package className="h-12 w-12 text-navy/20" />
             </div>
-            <Clock className="h-12 w-12 text-orange/20" />
-          </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white rounded-xl shadow-lg p-6 border border-gray-100"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-charcoal/60 mb-1">In Progress</p>
+                <p className="text-3xl font-bold text-orange">{inProgressOrders}</p>
+              </div>
+              <Clock className="h-12 w-12 text-orange/20" />
+            </div>
         </motion.div>
 
         <motion.div
@@ -618,7 +732,7 @@ function CustomerDashboardContent() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-charcoal/60 mb-1">Completed</p>
-              <p className="text-3xl font-bold text-green-600">0</p>
+              <p className="text-3xl font-bold text-green-600">{deliveredOrders}</p>
             </div>
             <CheckCircle className="h-12 w-12 text-green-600/20" />
           </div>
@@ -632,10 +746,61 @@ function CustomerDashboardContent() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-charcoal/60 mb-1">Favorites</p>
-              <p className="text-3xl font-bold text-gold">{fabrics.length}</p>
+              <p className="text-sm text-charcoal/60 mb-1">Total Spent</p>
+              <p className="text-3xl font-bold text-gold">₹{totalSpent.toLocaleString('en-IN')}</p>
             </div>
-            <Sparkles className="h-12 w-12 text-gold/20" />
+            <TrendingUp className="h-12 w-12 text-gold/20" />
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Order Breakdown */}
+      <div className="grid md:grid-cols-2 gap-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="bg-white rounded-xl shadow-lg p-6 border border-gray-100"
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <Scissors className="h-8 w-8 text-purple-600" />
+            <h3 className="text-xl font-bold text-navy">Fabric Orders</h3>
+          </div>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              <span className="text-charcoal/70">Total Orders</span>
+              <span className="font-bold text-navy">{fabricOrders.length}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              <span className="text-charcoal/70">Total Spent</span>
+              <span className="font-bold text-gold">
+                ₹{fabricOrders.reduce((sum, o) => sum + o.pricing.totalCost, 0).toLocaleString('en-IN')}
+              </span>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="bg-white rounded-xl shadow-lg p-6 border border-gray-100"
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <ShoppingBag className="h-8 w-8 text-blue-600" />
+            <h3 className="text-xl font-bold text-navy">Product Orders</h3>
+          </div>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              <span className="text-charcoal/70">Total Orders</span>
+              <span className="font-bold text-navy">{productOrders.length}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              <span className="text-charcoal/70">Total Spent</span>
+              <span className="font-bold text-gold">
+                ₹{productOrders.reduce((sum, o) => sum + o.pricing.total, 0).toLocaleString('en-IN')}
+              </span>
+            </div>
           </div>
         </motion.div>
       </div>
@@ -644,7 +809,7 @@ function CustomerDashboardContent() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
+        transition={{ delay: 0.6 }}
         className="bg-white rounded-xl shadow-lg p-8 border border-gray-100"
       >
         <div className="flex items-center gap-3 mb-4">
@@ -652,42 +817,68 @@ function CustomerDashboardContent() {
           <h3 className="text-2xl font-bold text-navy">Your Activity</h3>
         </div>
         <p className="text-charcoal/70 mb-4">
-          Track your orders, favorites, and tailoring journey all in one place.
+          Track your orders, spending, and tailoring journey all in one place.
         </p>
         <div className="grid md:grid-cols-3 gap-4 mt-6">
-          <div className="p-4 bg-gray-50 rounded-lg">
+          <div className="p-4 bg-gradient-to-br from-navy/5 to-gold/5 rounded-lg border border-navy/10">
             <p className="text-sm text-charcoal/60 mb-1">Total Spent</p>
-            <p className="text-2xl font-bold text-navy">₹0</p>
+            <p className="text-2xl font-bold text-navy">₹{totalSpent.toLocaleString('en-IN')}</p>
           </div>
-          <div className="p-4 bg-gray-50 rounded-lg">
+          <div className="p-4 bg-gradient-to-br from-gold/5 to-orange/5 rounded-lg border border-gold/10">
             <p className="text-sm text-charcoal/60 mb-1">Avg. Order Value</p>
-            <p className="text-2xl font-bold text-navy">₹0</p>
+            <p className="text-2xl font-bold text-navy">₹{avgOrderValue.toLocaleString('en-IN')}</p>
           </div>
-          <div className="p-4 bg-gray-50 rounded-lg">
+          <div className="p-4 bg-gradient-to-br from-purple/5 to-blue/5 rounded-lg border border-purple/10">
             <p className="text-sm text-charcoal/60 mb-1">Member Since</p>
             <p className="text-lg font-bold text-navy">
               {profile?.createdAt
-                ? new Date(profile.createdAt.toDate()).toLocaleDateString()
+                ? new Date(profile.createdAt.toDate()).toLocaleDateString('en-IN', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric'
+                  })
                 : "Today"}
             </p>
           </div>
         </div>
       </motion.div>
     </div>
-  );
+    );
+  };
 
   // Orders View
-  const renderOrdersView = () => (
-    <div className="space-y-6">
-      <div className="bg-white rounded-xl shadow-lg p-12 text-center border border-gray-100">
-        <Package className="h-20 w-20 text-charcoal/20 mx-auto mb-4" />
-        <h3 className="text-2xl font-bold text-navy mb-2">No Orders Yet</h3>
-        <p className="text-charcoal/70 mb-6">
-          Start your tailoring journey by placing your first order!
-        </p>
-        <Link href="/customer/order/new">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
+  const renderOrdersView = () => {
+    const totalOrders = fabricOrders.length + productOrders.length;
+
+    // Combine and sort all orders by date
+    const allOrders = [
+      ...fabricOrders.map(o => ({ ...o, type: 'fabric' as const })),
+      ...productOrders.map(o => ({ ...o, type: 'product' as const }))
+    ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    if (ordersLoading) {
+      return (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <Loader2 className="h-12 w-12 animate-spin text-gold mx-auto mb-4" />
+            <p className="text-charcoal/60">Loading your orders...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (totalOrders === 0) {
+      return (
+        <div className="space-y-6">
+          <div className="bg-white rounded-xl shadow-lg p-12 text-center border border-gray-100">
+            <Package className="h-20 w-20 text-charcoal/20 mx-auto mb-4" />
+            <h3 className="text-2xl font-bold text-navy mb-2">No Orders Yet</h3>
+            <p className="text-charcoal/70 mb-6">
+              Start your tailoring journey by placing your first order!
+            </p>
+            <Link href="/customer/order/new">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             className="px-8 py-3 bg-gradient-to-r from-navy to-gold text-white rounded-lg font-semibold hover:shadow-lg transition-all"
           >
@@ -696,7 +887,113 @@ function CustomerDashboardContent() {
         </Link>
       </div>
     </div>
-  );
+      );
+    }
+
+    // Display orders
+    return (
+      <div className="space-y-6">
+        <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-2xl font-bold text-navy">My Orders ({totalOrders})</h3>
+            <div className="flex gap-2">
+              <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-semibold">
+                Fabric: {fabricOrders.length}
+              </span>
+              <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
+                Products: {productOrders.length}
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {allOrders.map((order, index) => {
+              const isFabricOrder = order.type === 'fabric';
+              const statusColors: any = {
+                pending: 'bg-yellow-100 text-yellow-700',
+                confirmed: 'bg-blue-100 text-blue-700',
+                in_progress: 'bg-purple-100 text-purple-700',
+                processing: 'bg-purple-100 text-purple-700',
+                ready_for_delivery: 'bg-green-100 text-green-700',
+                shipped: 'bg-indigo-100 text-indigo-700',
+                delivered: 'bg-emerald-100 text-emerald-700',
+                cancelled: 'bg-red-100 text-red-700',
+              };
+
+              return (
+                <motion.div
+                  key={`${order.type}-${order.id}`}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="p-6 border border-gray-200 rounded-xl hover:shadow-md transition-all"
+                >
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          isFabricOrder ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {isFabricOrder ? 'Fabric Order' : 'Product Order'}
+                        </span>
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          statusColors[order.status] || 'bg-gray-100 text-gray-700'
+                        }`}>
+                          {order.status.replace('_', ' ').toUpperCase()}
+                        </span>
+                      </div>
+
+                      <p className="font-mono text-sm font-bold text-navy mb-2">
+                        {order.orderNumber}
+                      </p>
+
+                      {isFabricOrder ? (
+                        <div className="text-sm text-charcoal/70">
+                          <p className="font-semibold">{(order as any).service.name}</p>
+                          <p>{(order as any).fabric.name} - {(order as any).fabric.color}</p>
+                        </div>
+                      ) : (
+                        <div className="text-sm text-charcoal/70">
+                          <p className="font-semibold">
+                            {(order as any).items.length} item{(order as any).items.length > 1 ? 's' : ''}
+                          </p>
+                          <p>{(order as any).items[0]?.product.name}
+                            {(order as any).items.length > 1 && ` +${(order as any).items.length - 1} more`}
+                          </p>
+                        </div>
+                      )}
+
+                      <p className="text-xs text-charcoal/50 mt-2">
+                        Ordered on {new Date(order.createdAt).toLocaleDateString('en-IN', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric'
+                        })}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-2">
+                      <p className="text-2xl font-bold text-gold">
+                        ₹{isFabricOrder
+                          ? (order as any).pricing.totalCost.toLocaleString('en-IN')
+                          : (order as any).pricing.total.toLocaleString('en-IN')
+                        }
+                      </p>
+                      {(order as any).paymentMethod && (
+                        <p className="text-xs text-charcoal/60">
+                          {(order as any).paymentMethod === 'cod' ? 'Cash on Delivery' : 'UPI Payment'}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   // Profile handlers
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

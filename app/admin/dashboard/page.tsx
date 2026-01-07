@@ -42,6 +42,12 @@ import {
 import { useOrderStore } from "@/store/useOrderStore";
 import { getAllOrders, getOrderStats } from "@/services/orderService";
 import { Order, OrderStatus } from "@/types/order";
+import {
+  getAllProductOrders,
+  getProductOrderStats,
+  ProductOrder,
+  ProductOrderStatus,
+} from "@/services/productOrderService";
 import { Input } from "@/components/ui/input";
 import OrderDetailModal from "@/components/OrderDetailModal";
 import AddEditFabricModal from "@/components/AddEditFabricModal";
@@ -97,6 +103,42 @@ const statusConfig: Record<
   },
 };
 
+const productOrderStatusConfig: Record<
+  ProductOrderStatus,
+  { label: string; color: string; bgColor: string }
+> = {
+  pending: {
+    label: "Pending",
+    color: "text-yellow-600",
+    bgColor: "bg-yellow-50",
+  },
+  confirmed: {
+    label: "Confirmed",
+    color: "text-blue-600",
+    bgColor: "bg-blue-50",
+  },
+  processing: {
+    label: "Processing",
+    color: "text-purple-600",
+    bgColor: "bg-purple-50",
+  },
+  shipped: {
+    label: "Shipped",
+    color: "text-indigo-600",
+    bgColor: "bg-indigo-50",
+  },
+  delivered: {
+    label: "Delivered",
+    color: "text-emerald-600",
+    bgColor: "bg-emerald-50",
+  },
+  cancelled: {
+    label: "Cancelled",
+    color: "text-red-600",
+    bgColor: "bg-red-50",
+  },
+};
+
 export default function AdminDashboard() {
   const searchParams = useSearchParams();
   const activeView = searchParams.get("view") || "dashboard";
@@ -134,9 +176,30 @@ export default function AdminDashboard() {
   const [isMigratingProducts, setIsMigratingProducts] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<ProductCategory | "All">("All");
 
+  // Product Orders state
+  const [productOrders, setProductOrders] = useState<ProductOrder[]>([]);
+  const [productOrdersLoading, setProductOrdersLoading] = useState(false);
+  const [productOrderSearchQuery, setProductOrderSearchQuery] = useState("");
+  const [productOrderStatusFilter, setProductOrderStatusFilter] = useState<ProductOrderStatus | "all">("all");
+  const [selectedProductOrder, setSelectedProductOrder] = useState<ProductOrder | null>(null);
+  const [productOrderStats, setProductOrderStats] = useState({
+    total: 0,
+    pending: 0,
+    confirmed: 0,
+    processing: 0,
+    shipped: 0,
+    delivered: 0,
+    cancelled: 0,
+    totalRevenue: 0,
+    totalPaid: 0,
+    totalPending: 0,
+  });
+
   useEffect(() => {
     loadOrders();
     loadStats();
+    loadProductOrders();
+    loadProductOrderStats();
   }, []);
 
   useEffect(() => {
@@ -145,6 +208,10 @@ export default function AdminDashboard() {
     }
     if (activeView === "products") {
       loadProducts();
+    }
+    if (activeView === "product-orders") {
+      loadProductOrders();
+      loadProductOrderStats();
     }
   }, [activeView]);
 
@@ -166,6 +233,27 @@ export default function AdminDashboard() {
       setStats(fetchedStats);
     } catch (error) {
       console.error("Error loading stats:", error);
+    }
+  };
+
+  const loadProductOrders = async () => {
+    try {
+      setProductOrdersLoading(true);
+      const fetchedProductOrders = await getAllProductOrders();
+      setProductOrders(fetchedProductOrders);
+    } catch (error) {
+      console.error("Error loading product orders:", error);
+    } finally {
+      setProductOrdersLoading(false);
+    }
+  };
+
+  const loadProductOrderStats = async () => {
+    try {
+      const fetchedStats = await getProductOrderStats();
+      setProductOrderStats(fetchedStats);
+    } catch (error) {
+      console.error("Error loading product order stats:", error);
     }
   };
 
@@ -354,28 +442,57 @@ export default function AdminDashboard() {
     return matchesSearch && matchesStatus;
   });
 
+  const filteredProductOrders = productOrders.filter((order) => {
+    const matchesSearch =
+      order.customer.name.toLowerCase().includes(productOrderSearchQuery.toLowerCase()) ||
+      order.customer.phone.includes(productOrderSearchQuery) ||
+      order.orderNumber.toLowerCase().includes(productOrderSearchQuery.toLowerCase());
+
+    const matchesStatus =
+      productOrderStatusFilter === "all" || order.status === productOrderStatusFilter;
+
+    return matchesSearch && matchesStatus;
+  });
+
+  // Combine both order types for recent orders display
+  type CombinedOrder = (Order & { orderType: 'fabric' }) | (ProductOrder & { orderType: 'product' });
+
+  const combinedRecentOrders: CombinedOrder[] = [
+    ...orders.map(order => ({ ...order, orderType: 'fabric' as const })),
+    ...productOrders.map(order => ({ ...order, orderType: 'product' as const }))
+  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 10);
+
+  // Combined stats from fabric and product orders
+  const combinedStats = {
+    total: stats.total + productOrderStats.total,
+    pending: stats.pending + productOrderStats.pending,
+    inProgress: stats.inProgress + productOrderStats.processing,
+    delivered: stats.delivered + productOrderStats.delivered,
+    totalRevenue: stats.totalRevenue + productOrderStats.totalRevenue,
+  };
+
   const statCards = [
     {
       title: "Total Orders",
-      value: stats.total,
+      value: combinedStats.total,
       icon: Package,
       gradient: "from-blue-500 to-blue-600",
     },
     {
       title: "Pending",
-      value: stats.pending,
+      value: combinedStats.pending,
       icon: Clock,
       gradient: "from-yellow-500 to-yellow-600",
     },
     {
       title: "In Progress",
-      value: stats.inProgress,
+      value: combinedStats.inProgress,
       icon: TrendingUp,
       gradient: "from-purple-500 to-purple-600",
     },
     {
       title: "Delivered",
-      value: stats.delivered,
+      value: combinedStats.delivered,
       icon: CheckCircle,
       gradient: "from-green-500 to-green-600",
     },
@@ -427,9 +544,12 @@ export default function AdminDashboard() {
             <div className="flex items-center gap-1 md:gap-1.5 lg:gap-2">
               <IndianRupee className="h-4 w-4 md:h-4 md:w-4 lg:h-8 lg:w-8 text-navy" />
               <p className="text-lg md:text-xl lg:text-4xl font-bold text-navy">
-                {stats.totalRevenue.toLocaleString("en-IN")}
+                {combinedStats.totalRevenue.toLocaleString("en-IN")}
               </p>
             </div>
+            <p className="text-xs text-charcoal/60 mt-2">
+              Fabric: ₹{stats.totalRevenue.toLocaleString("en-IN")} • Products: ₹{productOrderStats.totalRevenue.toLocaleString("en-IN")}
+            </p>
           </div>
           <TrendingUp className="h-12 w-12 md:h-14 md:w-14 lg:h-16 lg:w-16 text-charcoal/20" />
         </div>
@@ -448,12 +568,12 @@ export default function AdminDashboard() {
           </h3>
         </div>
 
-        {isLoading ? (
+        {isLoading || productOrdersLoading ? (
           <div className="p-12 text-center">
             <div className="inline-block h-12 w-12 border-4 border-gold border-t-transparent rounded-full animate-spin"></div>
             <p className="text-charcoal/60 mt-4">Loading orders...</p>
           </div>
-        ) : orders.length === 0 ? (
+        ) : combinedRecentOrders.length === 0 ? (
           <div className="p-12 text-center">
             <Package className="h-16 w-16 text-charcoal/20 mx-auto mb-4" />
             <p className="text-charcoal/60">No orders found</p>
@@ -467,10 +587,13 @@ export default function AdminDashboard() {
                     Order #
                   </th>
                   <th className="px-3 md:px-4 lg:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-semibold text-charcoal">
+                    Type
+                  </th>
+                  <th className="px-3 md:px-4 lg:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-semibold text-charcoal">
                     Customer
                   </th>
                   <th className="px-3 md:px-4 lg:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-semibold text-charcoal">
-                    Service
+                    Details
                   </th>
                   <th className="px-3 md:px-4 lg:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-semibold text-charcoal">
                     Amount
@@ -487,90 +610,149 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {orders.slice(0, 10).map((order, index) => (
-                  <motion.tr
-                    key={order.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.05 }}
-                    className="hover:bg-gray-50 transition-colors"
-                  >
-                    <td className="px-3 md:px-4 lg:px-6 py-3 md:py-4">
-                      <p className="font-mono text-sm font-semibold text-navy">
-                        {order.orderNumber}
-                      </p>
-                    </td>
-                    <td className="px-3 md:px-4 lg:px-6 py-3 md:py-4">
-                      <div>
-                        <p className="font-medium text-charcoal">
-                          {order.customer.name}
+                {combinedRecentOrders.map((order, index) => {
+                  const isFabricOrder = order.orderType === 'fabric';
+                  const amount = isFabricOrder
+                    ? (order as Order).pricing.totalCost
+                    : (order as ProductOrder).pricing.total;
+
+                  // Get status configuration based on order type
+                  let statusInfo;
+                  if (isFabricOrder) {
+                    const fabricOrder = order as Order;
+                    statusInfo = statusConfig[fabricOrder.status] || {
+                      label: fabricOrder.status,
+                      color: 'text-gray-600',
+                      bgColor: 'bg-gray-100'
+                    };
+                  } else {
+                    const productOrder = order as ProductOrder;
+                    statusInfo = productOrderStatusConfig[productOrder.status] || {
+                      label: productOrder.status,
+                      color: 'text-gray-600',
+                      bgColor: 'bg-gray-100'
+                    };
+                  }
+
+                  return (
+                    <motion.tr
+                      key={`${order.orderType}-${order.id}`}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.05 }}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
+                      <td className="px-3 md:px-4 lg:px-6 py-3 md:py-4">
+                        <p className="font-mono text-sm font-semibold text-navy">
+                          {order.orderNumber}
                         </p>
-                        <p className="text-sm text-charcoal/60 flex items-center gap-1 mt-1">
-                          <Phone className="h-3 w-3" />
-                          {order.customer.phone}
+                      </td>
+                      <td className="px-3 md:px-4 lg:px-6 py-3 md:py-4">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
+                          isFabricOrder ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {isFabricOrder ? 'Fabric' : 'Product'}
+                        </span>
+                      </td>
+                      <td className="px-3 md:px-4 lg:px-6 py-3 md:py-4">
+                        <div>
+                          <p className="font-medium text-charcoal">
+                            {order.customer.name}
+                          </p>
+                          <p className="text-sm text-charcoal/60 flex items-center gap-1 mt-1">
+                            <Phone className="h-3 w-3" />
+                            {order.customer.phone}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="px-3 md:px-4 lg:px-6 py-3 md:py-4">
+                        {isFabricOrder ? (
+                          <>
+                            <p className="text-sm text-charcoal">
+                              {(order as Order).service.name}
+                            </p>
+                            <p className="text-xs text-charcoal/60 mt-1">
+                              {(order as Order).fabric.name}
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-sm text-charcoal">
+                              {(order as ProductOrder).items.length} item{(order as ProductOrder).items.length > 1 ? 's' : ''}
+                            </p>
+                            <p className="text-xs text-charcoal/60 mt-1">
+                              {(order as ProductOrder).items[0]?.product.name}
+                              {(order as ProductOrder).items.length > 1 && ` +${(order as ProductOrder).items.length - 1}`}
+                            </p>
+                          </>
+                        )}
+                      </td>
+                      <td className="px-3 md:px-4 lg:px-6 py-3 md:py-4">
+                        <p className="font-semibold text-gold flex items-center gap-1">
+                          <IndianRupee className="h-4 w-4" />
+                          {amount.toLocaleString("en-IN")}
                         </p>
-                      </div>
-                    </td>
-                    <td className="px-3 md:px-4 lg:px-6 py-3 md:py-4">
-                      <p className="text-sm text-charcoal">
-                        {order.service.name}
-                      </p>
-                      <p className="text-xs text-charcoal/60 mt-1">
-                        {order.fabric.name}
-                      </p>
-                    </td>
-                    <td className="px-3 md:px-4 lg:px-6 py-3 md:py-4">
-                      <p className="font-semibold text-gold flex items-center gap-1">
-                        <IndianRupee className="h-4 w-4" />
-                        {order.pricing.totalCost.toLocaleString("en-IN")}
-                      </p>
-                    </td>
-                    <td className="px-3 md:px-4 lg:px-6 py-3 md:py-4">
-                      <p className="text-sm text-charcoal flex items-center gap-1">
-                        <Calendar className="h-4 w-4 text-charcoal/60" />
-                        {new Date(order.createdAt).toLocaleDateString("en-IN", {
-                          day: "2-digit",
-                          month: "short",
-                          year: "numeric",
-                        })}
-                      </p>
-                    </td>
-                    <td className="px-3 md:px-4 lg:px-6 py-3 md:py-4">
-                      <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-                          statusConfig[order.status].bgColor
-                        } ${statusConfig[order.status].color}`}
-                      >
-                        {statusConfig[order.status].label}
-                      </span>
-                    </td>
-                    <td className="px-3 md:px-4 lg:px-6 py-3 md:py-4">
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => setSelectedOrder(order)}
-                        className="p-2 bg-navy hover:bg-gold rounded-lg transition-colors cursor-pointer"
-                      >
-                        <Eye className="h-5 w-5 text-white" />
-                      </motion.button>
-                    </td>
-                  </motion.tr>
-                ))}
+                      </td>
+                      <td className="px-3 md:px-4 lg:px-6 py-3 md:py-4">
+                        <p className="text-sm text-charcoal flex items-center gap-1">
+                          <Calendar className="h-4 w-4 text-charcoal/60" />
+                          {new Date(order.createdAt).toLocaleDateString("en-IN", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </p>
+                      </td>
+                      <td className="px-3 md:px-4 lg:px-6 py-3 md:py-4">
+                        <span
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${statusInfo.bgColor} ${statusInfo.color}`}
+                        >
+                          {statusInfo.label}
+                        </span>
+                      </td>
+                      <td className="px-3 md:px-4 lg:px-6 py-3 md:py-4">
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => {
+                            if (isFabricOrder) {
+                              setSelectedOrder(order as Order);
+                            } else {
+                              setSelectedProductOrder(order as ProductOrder);
+                            }
+                          }}
+                          className="p-2 bg-navy hover:bg-gold rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Eye className="h-5 w-5 text-white" />
+                        </motion.button>
+                      </td>
+                    </motion.tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
 
-        {/* View All Orders Button */}
-        {orders.length > 10 && (
-          <div className="p-4 md:p-6 border-t border-gray-100">
-            <Link href="/admin/dashboard?view=orders">
+        {/* View All Orders Buttons */}
+        {(orders.length + productOrders.length > 10) && (
+          <div className="p-4 md:p-6 border-t border-gray-100 flex gap-3">
+            <Link href="/admin/dashboard?view=fabric-orders" className="flex-1">
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="w-full py-3 md:py-4 bg-navy text-white rounded-lg md:rounded-xl font-semibold hover:bg-gold transition-all cursor-pointer text-sm md:text-base"
+                className="w-full py-3 md:py-4 bg-purple-600 text-white rounded-lg md:rounded-xl font-semibold hover:bg-purple-700 transition-all cursor-pointer text-sm md:text-base"
               >
-                View All Orders ({orders.length})
+                Fabric Orders ({orders.length})
+              </motion.button>
+            </Link>
+            <Link href="/admin/dashboard?view=product-orders" className="flex-1">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full py-3 md:py-4 bg-blue-600 text-white rounded-lg md:rounded-xl font-semibold hover:bg-blue-700 transition-all cursor-pointer text-sm md:text-base"
+              >
+                Product Orders ({productOrders.length})
               </motion.button>
             </Link>
           </div>
@@ -580,8 +762,8 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Orders View */}
-      {activeView === "orders" && (
+      {/* Fabric Stitching Orders View */}
+      {activeView === "fabric-orders" && (
         <div className="space-y-6 md:space-y-8">
           {/* Filters & Search */}
           <motion.div
@@ -631,7 +813,7 @@ export default function AdminDashboard() {
           >
             <div className="p-3 md:p-4 lg:p-6 border-b border-gray-100">
               <h3 className="text-base md:text-lg lg:text-xl font-bold text-navy">
-                All Orders ({filteredOrders.length})
+                Fabric Stitching Orders ({filteredOrders.length})
               </h3>
             </div>
 
@@ -661,6 +843,9 @@ export default function AdminDashboard() {
                       </th>
                       <th className="px-3 md:px-4 lg:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-semibold text-charcoal">
                         Amount
+                      </th>
+                      <th className="px-3 md:px-4 lg:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-semibold text-charcoal">
+                        Payment
                       </th>
                       <th className="px-3 md:px-4 lg:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-semibold text-charcoal">
                         Date
@@ -713,6 +898,15 @@ export default function AdminDashboard() {
                           </p>
                         </td>
                         <td className="px-3 md:px-4 lg:px-6 py-3 md:py-4">
+                          <div>
+                            <p className="text-xs font-semibold text-charcoal uppercase">
+                              {(order as any).paymentMethod === 'cod' ? 'Cash on Delivery' :
+                               (order as any).paymentMethod === 'upi' ? 'UPI' :
+                               'COD'}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="px-3 md:px-4 lg:px-6 py-3 md:py-4">
                           <p className="text-sm text-charcoal flex items-center gap-1">
                             <Calendar className="h-4 w-4 text-charcoal/60" />
                             {new Date(order.createdAt).toLocaleDateString("en-IN", {
@@ -736,6 +930,195 @@ export default function AdminDashboard() {
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
                             onClick={() => setSelectedOrder(order)}
+                            className="p-2 bg-navy hover:bg-gold rounded-lg transition-colors cursor-pointer"
+                          >
+                            <Eye className="h-5 w-5 text-white" />
+                          </motion.button>
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </motion.div>
+        </div>
+      )}
+
+      {/* Product Orders View */}
+      {activeView === "product-orders" && (
+        <div className="space-y-6 md:space-y-8">
+          {/* Filters & Search */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="bg-white rounded-xl md:rounded-2xl shadow-lg p-4 md:p-5 lg:p-6 border border-gray-100"
+          >
+            <div className="flex flex-col lg:flex-row gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-charcoal/40" />
+                <Input
+                  type="text"
+                  placeholder="Search by order number, customer name, or phone..."
+                  value={productOrderSearchQuery}
+                  onChange={(e) => setProductOrderSearchQuery(e.target.value)}
+                  className="pl-12 py-4 md:py-5 lg:py-6 text-sm md:text-base rounded-xl border-2 border-gray-200 focus:border-gold"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Filter className="h-5 w-5 text-charcoal/60" />
+                <select
+                  value={productOrderStatusFilter}
+                  onChange={(e) =>
+                    setProductOrderStatusFilter(e.target.value as ProductOrderStatus | "all")
+                  }
+                  className="px-3 md:px-4 py-2 md:py-3 text-sm md:text-base rounded-lg md:rounded-xl border-2 border-gray-200 focus:border-gold focus:outline-none bg-white text-charcoal font-medium cursor-pointer"
+                >
+                  <option value="all">All Orders</option>
+                  <option value="pending">Pending</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="processing">Processing</option>
+                  <option value="shipped">Shipped</option>
+                  <option value="delivered">Delivered</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Product Orders List */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+            className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden"
+          >
+            <div className="p-3 md:p-4 lg:p-6 border-b border-gray-100">
+              <h3 className="text-base md:text-lg lg:text-xl font-bold text-navy">
+                Product Orders ({filteredProductOrders.length})
+              </h3>
+            </div>
+
+            {productOrdersLoading ? (
+              <div className="p-12 text-center">
+                <div className="inline-block h-12 w-12 border-4 border-gold border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-charcoal/60 mt-4">Loading product orders...</p>
+              </div>
+            ) : filteredProductOrders.length === 0 ? (
+              <div className="p-12 text-center">
+                <ShoppingBag className="h-16 w-16 text-charcoal/20 mx-auto mb-4" />
+                <p className="text-charcoal/60">No product orders found</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-3 md:px-4 lg:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-semibold text-charcoal">
+                        Order #
+                      </th>
+                      <th className="px-3 md:px-4 lg:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-semibold text-charcoal">
+                        Customer
+                      </th>
+                      <th className="px-3 md:px-4 lg:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-semibold text-charcoal">
+                        Items
+                      </th>
+                      <th className="px-3 md:px-4 lg:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-semibold text-charcoal">
+                        Amount
+                      </th>
+                      <th className="px-3 md:px-4 lg:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-semibold text-charcoal">
+                        Payment
+                      </th>
+                      <th className="px-3 md:px-4 lg:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-semibold text-charcoal">
+                        Date
+                      </th>
+                      <th className="px-3 md:px-4 lg:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-semibold text-charcoal">
+                        Status
+                      </th>
+                      <th className="px-3 md:px-4 lg:px-6 py-3 md:py-4 text-left text-xs md:text-sm font-semibold text-charcoal">
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {filteredProductOrders.map((order, index) => (
+                      <motion.tr
+                        key={order.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: index * 0.05 }}
+                        className="hover:bg-gray-50 transition-colors"
+                      >
+                        <td className="px-3 md:px-4 lg:px-6 py-3 md:py-4">
+                          <p className="font-mono text-sm font-semibold text-navy">
+                            {order.orderNumber}
+                          </p>
+                        </td>
+                        <td className="px-3 md:px-4 lg:px-6 py-3 md:py-4">
+                          <div>
+                            <p className="font-medium text-charcoal">
+                              {order.customer.name}
+                            </p>
+                            <p className="text-sm text-charcoal/60 flex items-center gap-1 mt-1">
+                              <Phone className="h-3 w-3" />
+                              {order.customer.phone}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="px-3 md:px-4 lg:px-6 py-3 md:py-4">
+                          <p className="text-sm text-charcoal">
+                            {order.items.length} item{order.items.length > 1 ? 's' : ''}
+                          </p>
+                          <p className="text-xs text-charcoal/60 mt-1">
+                            {order.items[0]?.product.name}
+                            {order.items.length > 1 && ` +${order.items.length - 1} more`}
+                          </p>
+                        </td>
+                        <td className="px-3 md:px-4 lg:px-6 py-3 md:py-4">
+                          <p className="font-semibold text-gold flex items-center gap-1">
+                            <IndianRupee className="h-4 w-4" />
+                            {order.pricing.total.toLocaleString("en-IN")}
+                          </p>
+                        </td>
+                        <td className="px-3 md:px-4 lg:px-6 py-3 md:py-4">
+                          <div>
+                            <p className="text-xs font-semibold text-charcoal uppercase">
+                              {order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'UPI'}
+                            </p>
+                            <p className={`text-xs mt-1 ${
+                              order.paymentStatus === 'paid' ? 'text-green-600' :
+                              order.paymentStatus === 'failed' ? 'text-red-600' : 'text-yellow-600'
+                            }`}>
+                              {order.paymentStatus === 'paid' ? 'Paid' :
+                               order.paymentStatus === 'failed' ? 'Failed' : 'Pending'}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="px-3 md:px-4 lg:px-6 py-3 md:py-4">
+                          <p className="text-sm text-charcoal flex items-center gap-1">
+                            <Calendar className="h-4 w-4 text-charcoal/60" />
+                            {new Date(order.createdAt).toLocaleDateString("en-IN", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </p>
+                        </td>
+                        <td className="px-3 md:px-4 lg:px-6 py-3 md:py-4">
+                          <span
+                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                              productOrderStatusConfig[order.status].bgColor
+                            } ${productOrderStatusConfig[order.status].color}`}
+                          >
+                            {productOrderStatusConfig[order.status].label}
+                          </span>
+                        </td>
+                        <td className="px-3 md:px-4 lg:px-6 py-3 md:py-4">
+                          <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => setSelectedProductOrder(order)}
                             className="p-2 bg-navy hover:bg-gold rounded-lg transition-colors cursor-pointer"
                           >
                             <Eye className="h-5 w-5 text-white" />

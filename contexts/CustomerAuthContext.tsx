@@ -56,39 +56,28 @@ export const CustomerAuthProvider = ({
 
     const unsubscribe = onAuthStateChange(async (firebaseUser) => {
       try {
-        setUser(firebaseUser);
-
         if (firebaseUser) {
-          // Fetch customer profile
+          // Check if this user exists in customers collection
           try {
             const customerProfile = await getCustomerProfile(firebaseUser.uid);
 
             if (customerProfile) {
+              // User exists in customers collection - they are a customer
+              setUser(firebaseUser);
               setProfile(customerProfile);
             } else {
-              // Create initial profile
-              const initialProfile: Partial<CustomerProfile> = {
-                uid: firebaseUser.uid,
-                email: firebaseUser.email || undefined,
-                phoneNumber: firebaseUser.phoneNumber || undefined,
-                profileCompleted: false,
-              };
-
-              try {
-                await saveCustomerProfile(firebaseUser.uid, initialProfile);
-                const savedProfile = await getCustomerProfile(firebaseUser.uid);
-                setProfile(savedProfile);
-              } catch (error: any) {
-                console.error("Error creating initial profile:", error);
-                // Set profile anyway to avoid infinite loading
-                setProfile(initialProfile as CustomerProfile);
-              }
+              // User is logged in Firebase but NOT in customers collection
+              // This means they are likely an admin or not a customer
+              // Don't set user or profile - treat as unauthenticated
+              console.log('User logged in but not found in customers collection');
+              setUser(null);
+              setProfile(null);
             }
           } catch (error: any) {
             // Handle offline errors gracefully
             if (error?.code === 'unavailable' || error?.message?.includes('offline')) {
               console.log('Operating in offline mode - using cached data');
-              // Create a temporary profile from Firebase user data
+              // In offline mode, create temporary profile
               const offlineProfile: Partial<CustomerProfile> = {
                 uid: firebaseUser.uid,
                 email: firebaseUser.email || undefined,
@@ -96,23 +85,23 @@ export const CustomerAuthProvider = ({
                 displayName: firebaseUser.displayName || undefined,
                 profileCompleted: false,
               };
+              setUser(firebaseUser);
               setProfile(offlineProfile as CustomerProfile);
             } else {
               console.error("Error fetching profile:", error);
-              // Create basic profile from user data
-              setProfile({
-                uid: firebaseUser.uid,
-                email: firebaseUser.email || undefined,
-                phoneNumber: firebaseUser.phoneNumber || undefined,
-                profileCompleted: false,
-              } as CustomerProfile);
+              // On error, don't authenticate
+              setUser(null);
+              setProfile(null);
             }
           }
         } else {
+          // No Firebase user - not authenticated
+          setUser(null);
           setProfile(null);
         }
       } catch (error) {
         console.error("Error in auth state change:", error);
+        setUser(null);
         setProfile(null);
       } finally {
         setLoading(false);

@@ -1,9 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ShoppingBag, Scissors, X } from "lucide-react";
+import { ShoppingBag, Scissors, X, ShoppingCart, Plus, Minus } from "lucide-react";
 import { Fabric } from "@/lib/fabricData";
 import { useRouter } from "next/navigation";
+import { useCart } from "@/contexts/CartContext";
+import { useState } from "react";
 
 type FabricDetailModalProps = {
   fabric: Fabric;
@@ -17,14 +19,34 @@ export default function FabricDetailModal({
   selectedColorIndex = 0,
 }: FabricDetailModalProps) {
   const router = useRouter();
+  const { addFabricToCart } = useCart();
+  const [quantity, setQuantity] = useState(2); // Default 2 meters
 
-  // Get the selected color gradient
+  // Get the selected color
   const selectedColor = fabric.colors[selectedColorIndex] || fabric.colors[0];
   const fabricGradient = selectedColor.gradient;
+  const fabricColorCode = selectedColor.colorCode;
 
-  const handleBuyFabric = () => {
-    router.push(`/customer/buy-fabric?id=${fabric.id}&colorIndex=${selectedColorIndex}`);
+  // Use gradient if available and valid, otherwise use colorCode
+  const hasGradient = fabricGradient &&
+                      typeof fabricGradient === 'string' &&
+                      fabricGradient.trim() !== '' &&
+                      fabricGradient.includes('from-');
+
+  const handleAddToCart = () => {
+    addFabricToCart(fabric, quantity, selectedColorIndex);
+    alert(`Added ${quantity} meter(s) of ${fabric.name} to cart!`);
     onClose();
+  };
+
+  const handleBuyNow = () => {
+    addFabricToCart(fabric, quantity, selectedColorIndex);
+    router.push("/customer/checkout");
+    onClose();
+  };
+
+  const handleQuantityChange = (delta: number) => {
+    setQuantity(Math.max(1, quantity + delta));
   };
 
   const handleStitchWithFabric = (service: string) => {
@@ -49,7 +71,8 @@ export default function FabricDetailModal({
       >
         {/* Fabric Image/Preview */}
         <div
-          className={`h-64 bg-gradient-to-br ${fabricGradient} relative overflow-hidden`}
+          className={hasGradient ? `h-64 bg-gradient-to-br ${fabricGradient} relative overflow-hidden` : `h-64 relative overflow-hidden`}
+          style={!hasGradient ? { backgroundColor: fabricColorCode } : {}}
         >
           {/* Texture Pattern */}
           <div className="absolute inset-0 opacity-30">
@@ -101,19 +124,63 @@ export default function FabricDetailModal({
 
           {/* Action Buttons */}
           <div className="space-y-4">
-            {/* Buy Fabric Only */}
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleBuyFabric}
-              className="w-full group relative overflow-hidden bg-orange text-white rounded-xl p-6 shadow-lg hover:shadow-2xl transition-all cursor-pointer"
-            >
-              <div className="flex items-center justify-center gap-3 mb-2">
-                <ShoppingBag className="h-6 w-6" />
-                <span className="text-xl font-bold">Buy Fabric Only</span>
+            {/* Quantity Selector */}
+            <div className="bg-gray-50 rounded-xl p-4">
+              <label className="block text-sm font-semibold text-charcoal mb-3">
+                Quantity (Meters)
+              </label>
+              <div className="flex items-center justify-center gap-4">
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handleQuantityChange(-1)}
+                  className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-md hover:shadow-lg transition-all cursor-pointer"
+                >
+                  <Minus className="h-5 w-5 text-navy" />
+                </motion.button>
+                <span className="text-3xl font-bold text-navy min-w-[60px] text-center">
+                  {quantity}
+                </span>
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handleQuantityChange(1)}
+                  className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-md hover:shadow-lg transition-all cursor-pointer"
+                >
+                  <Plus className="h-5 w-5 text-navy" />
+                </motion.button>
               </div>
-              <p className="text-white/90 text-sm">Purchase fabric without tailoring</p>
-            </motion.button>
+              <p className="text-center text-sm text-charcoal/70 mt-3">
+                Total: ₹{(fabric.pricePerMeter * quantity).toLocaleString("en-IN")}
+              </p>
+            </div>
+
+            {/* Add to Cart & Buy Now Buttons */}
+            <div className="grid grid-cols-2 gap-3">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleAddToCart}
+                className="group relative overflow-hidden bg-white border-2 border-navy text-navy rounded-xl p-4 shadow-lg hover:shadow-2xl transition-all cursor-pointer"
+              >
+                <div className="flex flex-col items-center justify-center gap-2">
+                  <ShoppingCart className="h-6 w-6" />
+                  <span className="text-sm font-bold">Add to Cart</span>
+                </div>
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleBuyNow}
+                className="group relative overflow-hidden bg-gradient-to-r from-orange to-gold text-white rounded-xl p-4 shadow-lg hover:shadow-2xl transition-all cursor-pointer"
+              >
+                <div className="flex flex-col items-center justify-center gap-2">
+                  <ShoppingBag className="h-6 w-6" />
+                  <span className="text-sm font-bold">Buy Now</span>
+                </div>
+              </motion.button>
+            </div>
 
             {/* Tailoring Options */}
             <div>

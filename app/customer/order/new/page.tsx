@@ -25,14 +25,27 @@ import { getAllFabrics, getFabricById } from "@/services/fabricService";
 import { createOrder } from "@/services/orderService";
 import { OrderFormData } from "@/types/order";
 import OrderSuccessModal from "@/components/OrderSuccessModal";
+import { useCustomerAuth } from "@/contexts/CustomerAuthContext";
 
-const steps = [
-  { id: 1, name: "Select Service", icon: Shirt },
-  { id: 2, name: "Choose Fabric", icon: Palette },
-  { id: 3, name: "Select Style", icon: Sparkles },
-  { id: 4, name: "Measurements", icon: Ruler },
-  { id: 5, name: "Review Order", icon: ShoppingCart },
-];
+// Dynamic steps will be set based on service type
+const getStepsForService = (serviceId: string) => {
+  if (serviceId === "stitching") {
+    // Stitching Only: Select Style → Measurements → Review Order → Payment
+    return [
+      { id: 1, name: "Select Style", icon: Sparkles },
+      { id: 2, name: "Measurements", icon: Ruler },
+      { id: 3, name: "Review Order", icon: ShoppingCart },
+    ];
+  } else {
+    // Kurta, Pyjama, Complete Set: Choose Fabric → Select Style → Measurements → Review Order → Payment
+    return [
+      { id: 1, name: "Choose Fabric", icon: Palette },
+      { id: 2, name: "Select Style", icon: Sparkles },
+      { id: 3, name: "Measurements", icon: Ruler },
+      { id: 4, name: "Review Order", icon: ShoppingCart },
+    ];
+  }
+};
 
 const serviceOptions = [
   {
@@ -53,82 +66,67 @@ const serviceOptions = [
     price: 999,
     gradient: "from-navy to-gold",
   },
+  {
+    id: "stitching",
+    name: "Stitching Only",
+    price: 500,
+    gradient: "from-purple to-blue",
+  },
 ];
 
-const styleOptions = [
+// Kurta Styles (2 types)
+const kurtaStyleOptions = [
   {
-    id: "classic",
-    name: "Classic",
-    description: "Traditional straight-cut kurta with standard collar",
-    image: "👔",
+    id: "kurta-without-pocket",
+    name: "Without Pocket",
+    description: "Clean kurta design without pockets",
+    icon: "👕",
     gradient: "from-blue-100 to-blue-200",
   },
   {
-    id: "designer",
-    name: "Designer",
-    description: "Modern designer kurta with unique patterns and cuts",
-    image: "✨",
-    gradient: "from-purple-100 to-pink-200",
-  },
-  {
-    id: "pathani",
-    name: "Pathani",
-    description: "Traditional Pathani style with button detailing",
-    image: "🎯",
-    gradient: "from-green-100 to-emerald-200",
-  },
-  {
-    id: "bandhgala",
-    name: "Bandhgala",
-    description: "Elegant Bandhgala style with mandarin collar",
-    image: "👑",
-    gradient: "from-orange-100 to-yellow-200",
-  },
-  {
-    id: "angrakha",
-    name: "Angrakha",
-    description: "Royal Angrakha style with overlapping front",
-    image: "⭐",
-    gradient: "from-red-100 to-pink-200",
-  },
-  {
-    id: "straight-cut",
-    name: "Straight Cut",
-    description: "Simple and elegant straight-cut design",
-    image: "📏",
-    gradient: "from-gray-100 to-gray-200",
+    id: "kurta-with-pocket",
+    name: "With Pocket",
+    description: "Kurta with front pocket for convenience",
+    icon: "👔",
+    gradient: "from-purple-100 to-purple-200",
   },
 ];
 
-const buttonTypeOptions = [
+// Pyjama Styles (4 types)
+const pyjamaStyleOptions = [
   {
-    id: "no-button",
-    name: "No Button",
-    description: "Simple pullover style without buttons",
-    icon: "⭕",
-  },
-  {
-    id: "front-button",
-    name: "Front Button",
-    description: "Traditional front button placket",
-    icon: "🔘",
-  },
-  {
-    id: "side-button",
-    name: "Side Button",
-    description: "Side opening with button closure",
+    id: "pyjama-left-zipper",
+    name: "Left Pocket with Zipper",
+    description: "Pyjama with left side zipper pocket",
     icon: "◀️",
+    gradient: "from-green-100 to-green-200",
   },
   {
-    id: "chinese-collar",
-    name: "Chinese Collar",
-    description: "Mandarin collar with buttons",
-    icon: "🎋",
+    id: "pyjama-right-zipper",
+    name: "Right Pocket with Zipper",
+    description: "Pyjama with right side zipper pocket",
+    icon: "▶️",
+    gradient: "from-orange-100 to-orange-200",
+  },
+  {
+    id: "pyjama-center-zipper",
+    name: "Center Zipper",
+    description: "Pyjama with center zipper",
+    icon: "🔽",
+    gradient: "from-pink-100 to-pink-200",
+  },
+  {
+    id: "pyjama-no-pockets",
+    name: "No Pockets",
+    description: "Simple pyjama without pockets",
+    icon: "⭕",
+    gradient: "from-gray-100 to-gray-200",
   },
 ];
 
 function NewOrderContent() {
   const searchParams = useSearchParams();
+  const { user } = useCustomerAuth(); // Get customer UID for order tracking
   const preSelectedFabricId = searchParams.get("fabricId");
   const preSelectedService = searchParams.get("service");
   const preSelectedColorIndex = parseInt(searchParams.get("colorIndex") || "0");
@@ -136,23 +134,35 @@ function NewOrderContent() {
   const [fabrics, setFabrics] = useState<Fabric[]>([]);
   const [fabricsLoading, setFabricsLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(1);
-  const [selectedService, setSelectedService] = useState("");
+  const [selectedService, setSelectedService] = useState(preSelectedService || "");
   const [selectedFabric, setSelectedFabric] = useState("");
   const [selectedFabricColorIndex, setSelectedFabricColorIndex] = useState(0);
-  const [selectedStyle, setSelectedStyle] = useState("");
-  const [selectedButtonType, setSelectedButtonType] = useState("");
+  const [selectedKurtaStyle, setSelectedKurtaStyle] = useState("");
+  const [selectedPyjamaStyle, setSelectedPyjamaStyle] = useState("");
+  const [buttonImage, setButtonImage] = useState<string | null>(null);
+  const [buttonImageFile, setButtonImageFile] = useState<File | null>(null);
   const [fabricQuantity, setFabricQuantity] = useState(3); // Default 3 meters for kurta
   const [showFabricList, setShowFabricList] = useState(false);
 
   // Track color selection for each fabric in the list
   const [fabricListColors, setFabricListColors] = useState<{ [key: string]: number }>({});
-  const [measurements, setMeasurements] = useState({
+
+  // Separate measurements for kurta and pyjama
+  const [kurtaMeasurements, setKurtaMeasurements] = useState({
     chest: "",
     waist: "",
     shoulder: "",
     length: "",
     sleeve: "",
   });
+
+  const [pyjamaMeasurements, setPyjamaMeasurements] = useState({
+    waist: "",
+    length: "",
+    thigh: "",
+    bottom: "",
+  });
+
   const [address, setAddress] = useState({
     name: "",
     phone: "",
@@ -162,9 +172,15 @@ function NewOrderContent() {
     pincode: "",
   });
 
+  // Payment method state
+  const [paymentMethod, setPaymentMethod] = useState<"cod" | "upi">("cod");
+
   // Success modal state
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [orderData, setOrderData] = useState<{ id: string; orderNumber: string } | null>(null);
+
+  // Get dynamic steps based on selected service
+  const steps = selectedService ? getStepsForService(selectedService) : [];
 
   // Load fabrics from Firebase
   useEffect(() => {
@@ -212,25 +228,111 @@ function NewOrderContent() {
     };
   }, []);
 
-  // Pre-select fabric and service if coming from fabric selection
+  // Pre-select fabric if coming from fabric selection
   useEffect(() => {
     if (preSelectedFabricId) {
       setSelectedFabric(preSelectedFabricId);
       setSelectedFabricColorIndex(preSelectedColorIndex);
     }
-    if (preSelectedService) {
-      setSelectedService(preSelectedService);
-    }
-    // If both fabric and service are pre-selected, skip to fabric step
-    if (preSelectedFabricId && preSelectedService) {
-      setCurrentStep(2);
-    }
-  }, [preSelectedFabricId, preSelectedService, preSelectedColorIndex]);
+  }, [preSelectedFabricId, preSelectedColorIndex]);
 
   const selectedFabricData = selectedFabric ? fabrics.find(f => f.id === selectedFabric) : null;
   const selectedServiceData = serviceOptions.find((s) => s.id === selectedService);
-  const selectedStyleData = styleOptions.find((s) => s.id === selectedStyle);
-  const selectedButtonTypeData = buttonTypeOptions.find((b) => b.id === selectedButtonType);
+  const selectedKurtaStyleData = kurtaStyleOptions.find((s) => s.id === selectedKurtaStyle);
+  const selectedPyjamaStyleData = pyjamaStyleOptions.find((s) => s.id === selectedPyjamaStyle);
+
+  // Helper to get current step name
+  const getCurrentStepName = () => {
+    return steps[currentStep - 1]?.name || "";
+  };
+
+  // Helper to check if we should show fabric selection for current service
+  const shouldShowFabricSelection = () => {
+    return selectedService !== "stitching";
+  };
+
+  // Helper to check which measurements to show
+  const getMeasurementsToShow = () => {
+    if (selectedService === "kurta") return "kurta";
+    if (selectedService === "pyjama") return "pyjama";
+    if (selectedService === "complete" || selectedService === "stitching") return "both";
+    return "kurta";
+  };
+
+  // Helper to check which styles to show
+  const shouldShowKurtaStyle = () => {
+    return selectedService === "kurta" || selectedService === "complete" || selectedService === "stitching";
+  };
+
+  const shouldShowPyjamaStyle = () => {
+    return selectedService === "pyjama" || selectedService === "complete" || selectedService === "stitching";
+  };
+
+  const shouldShowButtonSelection = () => {
+    return selectedService === "kurta" || selectedService === "complete" || selectedService === "stitching";
+  };
+
+  // Handle button image upload
+  const handleButtonImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setButtonImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setButtonImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Validation helpers
+  const validateKurtaMeasurements = (): boolean => {
+    return !!(
+      kurtaMeasurements.chest &&
+      kurtaMeasurements.waist &&
+      kurtaMeasurements.shoulder &&
+      kurtaMeasurements.length &&
+      kurtaMeasurements.sleeve
+    );
+  };
+
+  const validatePyjamaMeasurements = (): boolean => {
+    return !!(
+      pyjamaMeasurements.waist &&
+      pyjamaMeasurements.length &&
+      pyjamaMeasurements.thigh &&
+      pyjamaMeasurements.bottom
+    );
+  };
+
+  const validateMeasurements = (): boolean => {
+    const measurementType = getMeasurementsToShow();
+
+    if (measurementType === "kurta") {
+      return validateKurtaMeasurements();
+    } else if (measurementType === "pyjama") {
+      return validatePyjamaMeasurements();
+    } else if (measurementType === "both") {
+      return validateKurtaMeasurements() && validatePyjamaMeasurements();
+    }
+
+    return false;
+  };
+
+  const validateAddress = (): boolean => {
+    return !!(
+      address.name &&
+      address.phone &&
+      address.street &&
+      address.city &&
+      address.state &&
+      address.pincode
+    );
+  };
+
+  const isMeasurementsStepValid = (): boolean => {
+    return validateMeasurements() && validateAddress();
+  };
 
   // Get the selected fabric gradient based on color index
   const getFabricGradient = () => {
@@ -280,13 +382,19 @@ function NewOrderContent() {
     try {
       const formData: OrderFormData = {
         service: selectedService,
-        fabric: selectedFabric,
-        fabricQuantity: fabricQuantity,
-        selectedFabricColorIndex: selectedFabricColorIndex,
-        style: selectedStyle,
-        buttonType: selectedButtonType,
-        measurements,
+        fabric: shouldShowFabricSelection() ? selectedFabric : "", // Only include fabric for non-stitching
+        fabricQuantity: shouldShowFabricSelection() ? fabricQuantity : 0,
+        selectedFabricColorIndex: shouldShowFabricSelection() ? selectedFabricColorIndex : 0,
+        kurtaStyle: selectedKurtaStyle,
+        pyjamaStyle: selectedPyjamaStyle,
+        buttonImage: buttonImage || "",
+        measurements: {
+          kurta: kurtaMeasurements,
+          pyjama: pyjamaMeasurements,
+        },
         address,
+        customerUid: user?.uid, // Add customer UID for reliable order tracking
+        paymentMethod: paymentMethod, // Add payment method (COD/UPI)
       };
 
       const result = await createOrder(formData);
@@ -391,35 +499,8 @@ function NewOrderContent() {
           exit={{ opacity: 0, x: -20 }}
           className="bg-white rounded-2xl shadow-xl p-6 md:p-8 border border-gray-100"
         >
-          {/* Step 1: Service Selection */}
-          {currentStep === 1 && (
-            <div>
-              <h2 className="text-2xl md:text-3xl font-bold text-navy mb-6">
-                Select Your Service
-              </h2>
-              <div className="grid md:grid-cols-3 gap-4 md:gap-6">
-                {serviceOptions.map((service) => (
-                  <motion.div
-                    key={service.id}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setSelectedService(service.id)}
-                    className={`p-6 rounded-xl cursor-pointer transition-all ${
-                      selectedService === service.id
-                        ? `bg-gradient-to-br ${service.gradient} text-white shadow-xl`
-                        : "bg-gray-50 hover:bg-gray-100"
-                    }`}
-                  >
-                    <h3 className="text-xl font-bold mb-2">{service.name}</h3>
-                    <p className="text-2xl font-bold">₹{service.price}</p>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Fabric Selection */}
-          {currentStep === 2 && (
+          {/* Fabric Selection - Only for Kurta/Pyjama/Complete Set */}
+          {getCurrentStepName() === "Choose Fabric" && (
             <div>
               <h2 className="text-2xl md:text-3xl font-bold text-navy mb-6">
                 Choose Your Fabric
@@ -655,8 +736,8 @@ function NewOrderContent() {
             </div>
           )}
 
-          {/* Step 3: Style Selection */}
-          {currentStep === 3 && (
+          {/* Style Selection */}
+          {getCurrentStepName() === "Select Style" && (
             <div>
               <h2 className="text-2xl md:text-3xl font-bold text-navy mb-4">
                 Select Your Style
@@ -665,117 +746,190 @@ function NewOrderContent() {
                 Choose the perfect style that matches your preference
               </p>
 
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8">
-                {styleOptions.map((style) => (
-                  <motion.div
-                    key={style.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    whileHover={{ y: -5 }}
-                    className={`cursor-pointer rounded-2xl overflow-hidden transition-all border-2 ${
-                      selectedStyle === style.id
-                        ? "border-gold shadow-2xl"
-                        : "border-gray-200 shadow-lg hover:shadow-xl"
-                    }`}
-                  >
-                    {/* Style Icon/Image */}
-                    <div
-                      className={`h-32 bg-gradient-to-br ${style.gradient} flex items-center justify-center relative`}
-                    >
-                      <span className="text-6xl">{style.image}</span>
-                      {selectedStyle === style.id && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className="absolute top-3 right-3 w-8 h-8 bg-gold rounded-full flex items-center justify-center"
-                        >
-                          <Check className="h-5 w-5 text-white" />
-                        </motion.div>
-                      )}
-                    </div>
-
-                    {/* Style Info */}
-                    <div className="p-5 bg-white">
-                      <h3 className="text-lg font-bold text-navy mb-2">
-                        {style.name}
-                      </h3>
-                      <p className="text-sm text-charcoal/70 leading-relaxed mb-4">
-                        {style.description}
-                      </p>
-
-                      {/* Select Button */}
-                      <Button
-                        onClick={() => setSelectedStyle(style.id)}
-                        className={`w-full ${
-                          selectedStyle === style.id
-                            ? "bg-gold hover:bg-primary-dark"
-                            : "bg-navy hover:bg-navy/90"
-                        }`}
-                      >
-                        {selectedStyle === style.id ? "Selected" : "Select"}
-                      </Button>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-
-              {/* Button Type Selection */}
-              {selectedStyle && (
+              {/* Kurta Style Selection */}
+              {shouldShowKurtaStyle() && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="border-t pt-8"
+                  className="mb-8"
                 >
-                  <h3 className="text-xl font-bold text-navy mb-4">
-                    Select Button Type
-                  </h3>
-                  <p className="text-charcoal/80 mb-6">
-                    Choose your preferred button style
-                  </p>
-
-                  <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {buttonTypeOptions.map((buttonType) => (
+                  <h3 className="text-xl font-bold text-navy mb-4">Kurta Style</h3>
+                  <div className="grid sm:grid-cols-2 gap-4 md:gap-6">
+                    {kurtaStyleOptions.map((style) => (
                       <motion.div
-                        key={buttonType.id}
-                        whileHover={{ scale: 1.03 }}
-                        whileTap={{ scale: 0.97 }}
-                        onClick={() => setSelectedButtonType(buttonType.id)}
-                        className={`p-5 rounded-xl cursor-pointer transition-all border-2 ${
-                          selectedButtonType === buttonType.id
-                            ? "border-gold bg-gold/10 shadow-lg"
-                            : "border-gray-200 hover:border-gold/50 bg-white"
+                        key={style.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        whileHover={{ y: -5 }}
+                        className={`cursor-pointer rounded-2xl overflow-hidden transition-all border-2 ${
+                          selectedKurtaStyle === style.id
+                            ? "border-gold shadow-2xl"
+                            : "border-gray-200 shadow-lg hover:shadow-xl"
                         }`}
                       >
-                        <div className="text-center">
-                          <span className="text-4xl mb-3 block">{buttonType.icon}</span>
-                          <h4 className="font-bold text-navy mb-2 text-sm">
-                            {buttonType.name}
-                          </h4>
-                          <p className="text-xs text-charcoal/70 leading-relaxed">
-                            {buttonType.description}
-                          </p>
-                          {selectedButtonType === buttonType.id && (
+                        <div
+                          className={`h-32 bg-gradient-to-br ${style.gradient} flex items-center justify-center relative`}
+                        >
+                          <span className="text-6xl">{style.icon}</span>
+                          {selectedKurtaStyle === style.id && (
                             <motion.div
                               initial={{ scale: 0 }}
                               animate={{ scale: 1 }}
-                              className="mt-3 flex items-center justify-center"
+                              className="absolute top-3 right-3 w-8 h-8 bg-gold rounded-full flex items-center justify-center"
                             >
-                              <div className="w-6 h-6 bg-gold rounded-full flex items-center justify-center">
-                                <Check className="h-4 w-4 text-white" />
-                              </div>
+                              <Check className="h-5 w-5 text-white" />
                             </motion.div>
                           )}
+                        </div>
+                        <div className="p-5 bg-white">
+                          <h3 className="text-lg font-bold text-navy mb-2">
+                            {style.name}
+                          </h3>
+                          <p className="text-sm text-charcoal/70 leading-relaxed mb-4">
+                            {style.description}
+                          </p>
+                          <Button
+                            onClick={() => setSelectedKurtaStyle(style.id)}
+                            className={`w-full ${
+                              selectedKurtaStyle === style.id
+                                ? "bg-gold hover:bg-primary-dark"
+                                : "bg-navy hover:bg-navy/90"
+                            }`}
+                          >
+                            {selectedKurtaStyle === style.id ? "Selected" : "Select"}
+                          </Button>
                         </div>
                       </motion.div>
                     ))}
                   </div>
                 </motion.div>
               )}
+
+              {/* Pyjama Style Selection */}
+              {shouldShowPyjamaStyle() && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-8"
+                >
+                  <h3 className="text-xl font-bold text-navy mb-4">Pyjama Style</h3>
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                    {pyjamaStyleOptions.map((style) => (
+                      <motion.div
+                        key={style.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        whileHover={{ y: -5 }}
+                        className={`cursor-pointer rounded-2xl overflow-hidden transition-all border-2 ${
+                          selectedPyjamaStyle === style.id
+                            ? "border-gold shadow-2xl"
+                            : "border-gray-200 shadow-lg hover:shadow-xl"
+                        }`}
+                      >
+                        <div
+                          className={`h-32 bg-gradient-to-br ${style.gradient} flex items-center justify-center relative`}
+                        >
+                          <span className="text-6xl">{style.icon}</span>
+                          {selectedPyjamaStyle === style.id && (
+                            <motion.div
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              className="absolute top-3 right-3 w-8 h-8 bg-gold rounded-full flex items-center justify-center"
+                            >
+                              <Check className="h-5 w-5 text-white" />
+                            </motion.div>
+                          )}
+                        </div>
+                        <div className="p-5 bg-white">
+                          <h3 className="text-lg font-bold text-navy mb-2">
+                            {style.name}
+                          </h3>
+                          <p className="text-sm text-charcoal/70 leading-relaxed mb-4">
+                            {style.description}
+                          </p>
+                          <Button
+                            onClick={() => setSelectedPyjamaStyle(style.id)}
+                            className={`w-full ${
+                              selectedPyjamaStyle === style.id
+                                ? "bg-gold hover:bg-primary-dark"
+                                : "bg-navy hover:bg-navy/90"
+                            }`}
+                          >
+                            {selectedPyjamaStyle === style.id ? "Selected" : "Select"}
+                          </Button>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Button Image Upload - Only for Kurta, Complete Set, and Stitching */}
+              {shouldShowButtonSelection() && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="border-t pt-8"
+                >
+                  <h3 className="text-xl font-bold text-navy mb-4">
+                    Upload Button Image
+                  </h3>
+                  <p className="text-charcoal/80 mb-6">
+                    Upload a photo of the button you want for your kurta
+                  </p>
+
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {/* Upload Area */}
+                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-gold transition-colors">
+                      <input
+                        type="file"
+                        id="button-image"
+                        accept="image/*"
+                        onChange={handleButtonImageUpload}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor="button-image"
+                        className="cursor-pointer flex flex-col items-center"
+                      >
+                        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                          <Plus className="h-10 w-10 text-gray-400" />
+                        </div>
+                        <p className="text-navy font-semibold mb-1">Click to upload</p>
+                        <p className="text-sm text-charcoal/60">PNG, JPG up to 5MB</p>
+                      </label>
+                    </div>
+
+                    {/* Preview Area */}
+                    {buttonImage && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="border-2 border-gold rounded-xl p-6 bg-gold/5"
+                      >
+                        <p className="text-navy font-semibold mb-3">Selected Button:</p>
+                        <div className="relative w-full h-48 rounded-lg overflow-hidden">
+                          <img
+                            src={buttonImage}
+                            alt="Button preview"
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute top-2 right-2">
+                            <div className="w-8 h-8 bg-gold rounded-full flex items-center justify-center">
+                              <Check className="h-5 w-5 text-white" />
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
             </div>
           )}
 
-          {/* Step 4: Measurements & Address */}
-          {currentStep === 4 && (
+          {/* Measurements & Address */}
+          {getCurrentStepName() === "Measurements" && (
             <div>
               <h2 className="text-2xl md:text-3xl font-bold text-navy mb-6">
                 Enter Your Measurements & Address
@@ -784,81 +938,172 @@ function NewOrderContent() {
               {/* Measurements Section */}
               <div className="mb-8">
                 <h3 className="text-xl font-bold text-navy mb-4">Measurements</h3>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="chest">Chest (inches)</Label>
-                    <Input
-                      id="chest"
-                      type="number"
-                      placeholder="42"
-                      value={measurements.chest}
-                      onChange={(e) =>
-                        setMeasurements({ ...measurements, chest: e.target.value })
-                      }
-                      required
-                      className="mt-2"
-                    />
+
+                {/* Kurta Measurements - Show for kurta, complete set, and stitching */}
+                {(getMeasurementsToShow() === "kurta" || getMeasurementsToShow() === "both") && (
+                  <div className="mb-6">
+                    {getMeasurementsToShow() === "both" && (
+                      <h4 className="text-lg font-semibold text-charcoal mb-4">Kurta Measurements</h4>
+                    )}
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="kurta-chest">
+                          Chest (inches) <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          id="kurta-chest"
+                          type="number"
+                          placeholder="42"
+                          value={kurtaMeasurements.chest}
+                          onChange={(e) =>
+                            setKurtaMeasurements({ ...kurtaMeasurements, chest: e.target.value })
+                          }
+                          required
+                          className={`mt-2 ${!kurtaMeasurements.chest ? 'border-red-300 focus:border-red-500' : ''}`}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="kurta-waist">
+                          Waist (inches) <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          id="kurta-waist"
+                          type="number"
+                          placeholder="36"
+                          value={kurtaMeasurements.waist}
+                          onChange={(e) =>
+                            setKurtaMeasurements({ ...kurtaMeasurements, waist: e.target.value })
+                          }
+                          required
+                          className={`mt-2 ${!kurtaMeasurements.waist ? 'border-red-300 focus:border-red-500' : ''}`}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="kurta-shoulder">
+                          Shoulder (inches) <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          id="kurta-shoulder"
+                          type="number"
+                          placeholder="18"
+                          value={kurtaMeasurements.shoulder}
+                          onChange={(e) =>
+                            setKurtaMeasurements({ ...kurtaMeasurements, shoulder: e.target.value })
+                          }
+                          required
+                          className={`mt-2 ${!kurtaMeasurements.shoulder ? 'border-red-300 focus:border-red-500' : ''}`}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="kurta-length">
+                          Length (inches) <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          id="kurta-length"
+                          type="number"
+                          placeholder="38"
+                          value={kurtaMeasurements.length}
+                          onChange={(e) =>
+                            setKurtaMeasurements({ ...kurtaMeasurements, length: e.target.value })
+                          }
+                          required
+                          className={`mt-2 ${!kurtaMeasurements.length ? 'border-red-300 focus:border-red-500' : ''}`}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="kurta-sleeve">
+                          Sleeve (inches) <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          id="kurta-sleeve"
+                          type="number"
+                          placeholder="24"
+                          value={kurtaMeasurements.sleeve}
+                          onChange={(e) =>
+                            setKurtaMeasurements({ ...kurtaMeasurements, sleeve: e.target.value })
+                          }
+                          required
+                          className={`mt-2 ${!kurtaMeasurements.sleeve ? 'border-red-300 focus:border-red-500' : ''}`}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="waist">Waist (inches)</Label>
-                    <Input
-                      id="waist"
-                      type="number"
-                      placeholder="36"
-                      value={measurements.waist}
-                      onChange={(e) =>
-                        setMeasurements({ ...measurements, waist: e.target.value })
-                      }
-                      required
-                      className="mt-2"
-                    />
+                )}
+
+                {/* Pyjama Measurements - Show for pyjama, complete set, and stitching */}
+                {(getMeasurementsToShow() === "pyjama" || getMeasurementsToShow() === "both") && (
+                  <div className="mb-6">
+                    {getMeasurementsToShow() === "both" && (
+                      <h4 className="text-lg font-semibold text-charcoal mb-4 mt-6">Pyjama Measurements</h4>
+                    )}
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="pyjama-waist">
+                          Waist (inches) <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          id="pyjama-waist"
+                          type="number"
+                          placeholder="32"
+                          value={pyjamaMeasurements.waist}
+                          onChange={(e) =>
+                            setPyjamaMeasurements({ ...pyjamaMeasurements, waist: e.target.value })
+                          }
+                          required
+                          className={`mt-2 ${!pyjamaMeasurements.waist ? 'border-red-300 focus:border-red-500' : ''}`}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="pyjama-length">
+                          Length (inches) <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          id="pyjama-length"
+                          type="number"
+                          placeholder="40"
+                          value={pyjamaMeasurements.length}
+                          onChange={(e) =>
+                            setPyjamaMeasurements({ ...pyjamaMeasurements, length: e.target.value })
+                          }
+                          required
+                          className={`mt-2 ${!pyjamaMeasurements.length ? 'border-red-300 focus:border-red-500' : ''}`}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="pyjama-thigh">
+                          Thigh (inches) <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          id="pyjama-thigh"
+                          type="number"
+                          placeholder="24"
+                          value={pyjamaMeasurements.thigh}
+                          onChange={(e) =>
+                            setPyjamaMeasurements({ ...pyjamaMeasurements, thigh: e.target.value })
+                          }
+                          required
+                          className={`mt-2 ${!pyjamaMeasurements.thigh ? 'border-red-300 focus:border-red-500' : ''}`}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="pyjama-bottom">
+                          Bottom (inches) <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          id="pyjama-bottom"
+                          type="number"
+                          placeholder="14"
+                          value={pyjamaMeasurements.bottom}
+                          onChange={(e) =>
+                            setPyjamaMeasurements({ ...pyjamaMeasurements, bottom: e.target.value })
+                          }
+                          required
+                          className={`mt-2 ${!pyjamaMeasurements.bottom ? 'border-red-300 focus:border-red-500' : ''}`}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="shoulder">Shoulder (inches)</Label>
-                    <Input
-                      id="shoulder"
-                      type="number"
-                      placeholder="18"
-                      value={measurements.shoulder}
-                      onChange={(e) =>
-                        setMeasurements({
-                          ...measurements,
-                          shoulder: e.target.value,
-                        })
-                      }
-                      required
-                      className="mt-2"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="length">Length (inches)</Label>
-                    <Input
-                      id="length"
-                      type="number"
-                      placeholder="38"
-                      value={measurements.length}
-                      onChange={(e) =>
-                        setMeasurements({ ...measurements, length: e.target.value })
-                      }
-                      required
-                      className="mt-2"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="sleeve">Sleeve (inches)</Label>
-                    <Input
-                      id="sleeve"
-                      type="number"
-                      placeholder="24"
-                      value={measurements.sleeve}
-                      onChange={(e) =>
-                        setMeasurements({ ...measurements, sleeve: e.target.value })
-                      }
-                      required
-                      className="mt-2"
-                    />
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* Address Section */}
@@ -868,7 +1113,9 @@ function NewOrderContent() {
                 </h3>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="name">Full Name</Label>
+                    <Label htmlFor="name">
+                      Full Name <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       id="name"
                       type="text"
@@ -878,11 +1125,13 @@ function NewOrderContent() {
                         setAddress({ ...address, name: e.target.value })
                       }
                       required
-                      className="mt-2"
+                      className={`mt-2 ${!address.name ? 'border-red-300 focus:border-red-500' : ''}`}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="phone">Phone Number</Label>
+                    <Label htmlFor="phone">
+                      Phone Number <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       id="phone"
                       type="tel"
@@ -892,11 +1141,13 @@ function NewOrderContent() {
                         setAddress({ ...address, phone: e.target.value })
                       }
                       required
-                      className="mt-2"
+                      className={`mt-2 ${!address.phone ? 'border-red-300 focus:border-red-500' : ''}`}
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <Label htmlFor="street">Street Address</Label>
+                    <Label htmlFor="street">
+                      Street Address <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       id="street"
                       type="text"
@@ -906,11 +1157,13 @@ function NewOrderContent() {
                         setAddress({ ...address, street: e.target.value })
                       }
                       required
-                      className="mt-2"
+                      className={`mt-2 ${!address.street ? 'border-red-300 focus:border-red-500' : ''}`}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="city">City</Label>
+                    <Label htmlFor="city">
+                      City <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       id="city"
                       type="text"
@@ -920,11 +1173,13 @@ function NewOrderContent() {
                         setAddress({ ...address, city: e.target.value })
                       }
                       required
-                      className="mt-2"
+                      className={`mt-2 ${!address.city ? 'border-red-300 focus:border-red-500' : ''}`}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="state">State</Label>
+                    <Label htmlFor="state">
+                      State <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       id="state"
                       type="text"
@@ -934,11 +1189,13 @@ function NewOrderContent() {
                         setAddress({ ...address, state: e.target.value })
                       }
                       required
-                      className="mt-2"
+                      className={`mt-2 ${!address.state ? 'border-red-300 focus:border-red-500' : ''}`}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="pincode">PIN Code</Label>
+                    <Label htmlFor="pincode">
+                      PIN Code <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       id="pincode"
                       type="text"
@@ -948,7 +1205,7 @@ function NewOrderContent() {
                         setAddress({ ...address, pincode: e.target.value })
                       }
                       required
-                      className="mt-2"
+                      className={`mt-2 ${!address.pincode ? 'border-red-300 focus:border-red-500' : ''}`}
                     />
                   </div>
                 </div>
@@ -956,8 +1213,8 @@ function NewOrderContent() {
             </div>
           )}
 
-          {/* Step 5: Review Order */}
-          {currentStep === 5 && (
+          {/* Review Order */}
+          {getCurrentStepName() === "Review Order" && (
             <div>
               <h2 className="text-2xl md:text-3xl font-bold text-navy mb-6">
                 Review Your Order
@@ -969,56 +1226,83 @@ function NewOrderContent() {
                     {selectedServiceData?.name} - ₹{selectedServiceData?.price}
                   </p>
                 </div>
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <h3 className="font-bold text-navy mb-2">Fabric</h3>
-                  <div className="flex items-center gap-3">
-                    {selectedFabricData && (
-                      <>
-                        <div
-                          className={`w-12 h-12 rounded-lg bg-gradient-to-br ${getFabricGradient()}`}
-                        />
-                        <div>
-                          <p className="text-charcoal font-medium">
-                            {selectedFabricData.name}
-                          </p>
-                          <p className="text-sm text-charcoal/70">
-                            ₹{selectedFabricData.pricePerMeter}/meter
-                          </p>
-                        </div>
-                      </>
-                    )}
+                {/* Only show fabric for non-stitching services */}
+                {shouldShowFabricSelection() && selectedFabricData && (
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <h3 className="font-bold text-navy mb-2">Fabric</h3>
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-12 h-12 rounded-lg bg-gradient-to-br ${getFabricGradient()}`}
+                      />
+                      <div>
+                        <p className="text-charcoal font-medium">
+                          {selectedFabricData.name}
+                        </p>
+                        <p className="text-sm text-charcoal/70">
+                          ₹{selectedFabricData.pricePerMeter}/meter × {fabricQuantity} meters
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
                 <div className="p-4 bg-gray-50 rounded-lg">
-                  <h3 className="font-bold text-navy mb-2">Style & Button Type</h3>
+                  <h3 className="font-bold text-navy mb-2">Style Details</h3>
                   <div className="space-y-3">
-                    {selectedStyleData && (
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-12 h-12 rounded-lg bg-gradient-to-br ${selectedStyleData.gradient} flex items-center justify-center text-2xl`}
-                        >
-                          {selectedStyleData.image}
-                        </div>
-                        <div>
-                          <p className="text-charcoal font-medium">
-                            {selectedStyleData.name}
-                          </p>
-                          <p className="text-sm text-charcoal/70">
-                            {selectedStyleData.description}
-                          </p>
+                    {/* Kurta Style */}
+                    {selectedKurtaStyleData && (
+                      <div>
+                        <p className="text-xs font-semibold text-charcoal/60 mb-1">Kurta Style:</p>
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-12 h-12 rounded-lg bg-gradient-to-br ${selectedKurtaStyleData.gradient} flex items-center justify-center text-2xl`}
+                          >
+                            {selectedKurtaStyleData.icon}
+                          </div>
+                          <div>
+                            <p className="text-charcoal font-medium">
+                              {selectedKurtaStyleData.name}
+                            </p>
+                            <p className="text-sm text-charcoal/70">
+                              {selectedKurtaStyleData.description}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     )}
-                    {selectedButtonTypeData && (
-                      <div className="flex items-center gap-3 pl-4 border-l-2 border-gold">
-                        <span className="text-2xl">{selectedButtonTypeData.icon}</span>
-                        <div>
-                          <p className="text-charcoal font-medium text-sm">
-                            {selectedButtonTypeData.name}
-                          </p>
-                          <p className="text-xs text-charcoal/70">
-                            {selectedButtonTypeData.description}
-                          </p>
+
+                    {/* Pyjama Style */}
+                    {selectedPyjamaStyleData && (
+                      <div className={selectedKurtaStyleData ? "pt-3 border-t border-gray-300" : ""}>
+                        <p className="text-xs font-semibold text-charcoal/60 mb-1">Pyjama Style:</p>
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-12 h-12 rounded-lg bg-gradient-to-br ${selectedPyjamaStyleData.gradient} flex items-center justify-center text-2xl`}
+                          >
+                            {selectedPyjamaStyleData.icon}
+                          </div>
+                          <div>
+                            <p className="text-charcoal font-medium">
+                              {selectedPyjamaStyleData.name}
+                            </p>
+                            <p className="text-sm text-charcoal/70">
+                              {selectedPyjamaStyleData.description}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Button Image */}
+                    {buttonImage && (
+                      <div className={(selectedKurtaStyleData || selectedPyjamaStyleData) ? "pt-3 border-t border-gray-300" : ""}>
+                        <p className="text-xs font-semibold text-charcoal/60 mb-2">Button Selection:</p>
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={buttonImage}
+                            alt="Selected button"
+                            className="w-16 h-16 rounded-lg object-cover border-2 border-gold"
+                          />
+                          <p className="text-sm text-charcoal/70">Custom button uploaded</p>
                         </div>
                       </div>
                     )}
@@ -1026,13 +1310,37 @@ function NewOrderContent() {
                 </div>
                 <div className="p-4 bg-gray-50 rounded-lg">
                   <h3 className="font-bold text-navy mb-2">Measurements</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-charcoal">
-                    <p>Chest: {measurements.chest}"</p>
-                    <p>Waist: {measurements.waist}"</p>
-                    <p>Shoulder: {measurements.shoulder}"</p>
-                    <p>Length: {measurements.length}"</p>
-                    <p>Sleeve: {measurements.sleeve}"</p>
-                  </div>
+
+                  {/* Kurta Measurements */}
+                  {(getMeasurementsToShow() === "kurta" || getMeasurementsToShow() === "both") && (
+                    <div className="mb-4">
+                      {getMeasurementsToShow() === "both" && (
+                        <h4 className="font-semibold text-charcoal mb-2">Kurta:</h4>
+                      )}
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-charcoal">
+                        <p>Chest: {kurtaMeasurements.chest}"</p>
+                        <p>Waist: {kurtaMeasurements.waist}"</p>
+                        <p>Shoulder: {kurtaMeasurements.shoulder}"</p>
+                        <p>Length: {kurtaMeasurements.length}"</p>
+                        <p>Sleeve: {kurtaMeasurements.sleeve}"</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Pyjama Measurements */}
+                  {(getMeasurementsToShow() === "pyjama" || getMeasurementsToShow() === "both") && (
+                    <div>
+                      {getMeasurementsToShow() === "both" && (
+                        <h4 className="font-semibold text-charcoal mb-2 mt-3">Pyjama:</h4>
+                      )}
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-charcoal">
+                        <p>Waist: {pyjamaMeasurements.waist}"</p>
+                        <p>Length: {pyjamaMeasurements.length}"</p>
+                        <p>Thigh: {pyjamaMeasurements.thigh}"</p>
+                        <p>Bottom: {pyjamaMeasurements.bottom}"</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="p-4 bg-gray-50 rounded-lg">
                   <h3 className="font-bold text-navy mb-2">Delivery Address</h3>
@@ -1044,12 +1352,55 @@ function NewOrderContent() {
                     {address.state} - {address.pincode}
                   </p>
                 </div>
+
+                {/* Payment Method Selection */}
+                <div className="p-6 bg-white rounded-lg border-2 border-gray-200">
+                  <h3 className="font-bold text-navy mb-4 text-lg">Payment Method</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Cash on Delivery */}
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setPaymentMethod("cod")}
+                      className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${
+                        paymentMethod === "cod"
+                          ? "border-navy bg-navy/10 shadow-lg"
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="text-3xl">💵</div>
+                        <p className="font-semibold text-navy">Cash on Delivery</p>
+                        <p className="text-xs text-charcoal/60">Pay when you receive</p>
+                      </div>
+                    </motion.button>
+
+                    {/* UPI Payment */}
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setPaymentMethod("upi")}
+                      className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${
+                        paymentMethod === "upi"
+                          ? "border-navy bg-navy/10 shadow-lg"
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="text-3xl">📱</div>
+                        <p className="font-semibold text-navy">UPI Payment</p>
+                        <p className="text-xs text-charcoal/60">Pay online instantly</p>
+                      </div>
+                    </motion.button>
+                  </div>
+                </div>
+
                 {/* Cost Breakdown */}
                 <div className="p-6 bg-gradient-to-r from-gold/10 to-orange/10 rounded-lg">
                   <h3 className="font-bold text-navy mb-4 text-xl">Cost Summary</h3>
 
-                  {/* Fabric Cost */}
-                  {selectedFabricData && (
+                  {/* Fabric Cost - Only for non-stitching services */}
+                  {shouldShowFabricSelection() && selectedFabricData && (
                     <div className="mb-4 pb-4 border-b border-gold/30">
                       <div className="flex items-start justify-between mb-2">
                         <div>
@@ -1091,7 +1442,7 @@ function NewOrderContent() {
                     <span className="text-3xl font-bold text-gold">
                       ₹
                       {(selectedServiceData?.price || 0) +
-                        (selectedFabricData?.pricePerMeter || 0) * fabricQuantity}
+                        (shouldShowFabricSelection() ? (selectedFabricData?.pricePerMeter || 0) * fabricQuantity : 0)}
                     </span>
                   </div>
                 </div>
@@ -1112,9 +1463,13 @@ function NewOrderContent() {
               <Button
                 onClick={handleNext}
                 disabled={
-                  (currentStep === 1 && !selectedService) ||
-                  (currentStep === 2 && !selectedFabric) ||
-                  (currentStep === 3 && (!selectedStyle || !selectedButtonType))
+                  (getCurrentStepName() === "Choose Fabric" && !selectedFabric) ||
+                  (getCurrentStepName() === "Select Style" && (
+                    (shouldShowKurtaStyle() && !selectedKurtaStyle) ||
+                    (shouldShowPyjamaStyle() && !selectedPyjamaStyle) ||
+                    (shouldShowButtonSelection() && !buttonImage)
+                  )) ||
+                  (getCurrentStepName() === "Measurements" && !isMeasurementsStepValid())
                 }
               >
                 Next Step

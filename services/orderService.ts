@@ -10,9 +10,10 @@ import {
   Timestamp,
   getDoc,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { ref, uploadString, getDownloadURL } from "firebase/storage";
+import { db, storage } from "@/lib/firebase";
 import { Order, OrderStatus, OrderFormData, FabricOnlyOrderData } from "@/types/order";
-import { getFabricById } from "@/lib/fabricData";
+import { getFabricById } from "@/services/fabricService";
 
 // Generate order number (format: ORD-YYYYMMDD-XXXX)
 const generateOrderNumber = (): string => {
@@ -29,24 +30,37 @@ const serviceOptionsMap: { [key: string]: { name: string; price: number } } = {
   kurta: { name: "Kurta Tailoring", price: 650 },
   pyjama: { name: "Pyjama Tailoring", price: 450 },
   complete: { name: "Complete Set", price: 999 },
+  stitching: { name: "Stitching Only", price: 500 },
 };
 
-// Style options mapping
-const styleOptionsMap: { [key: string]: string } = {
-  classic: "Classic",
-  designer: "Designer",
-  pathani: "Pathani",
-  bandhgala: "Bandhgala",
-  angrakha: "Angrakha",
-  "straight-cut": "Straight Cut",
+// Kurta style options mapping
+const kurtaStyleOptionsMap: { [key: string]: string } = {
+  "kurta-without-pocket": "Without Pocket",
+  "kurta-with-pocket": "With Pocket",
 };
 
-// Button type options mapping
-const buttonTypeOptionsMap: { [key: string]: string } = {
-  "no-button": "No Button",
-  "front-button": "Front Button",
-  "side-button": "Side Button",
-  "chinese-collar": "Chinese Collar",
+// Pyjama style options mapping
+const pyjamaStyleOptionsMap: { [key: string]: string } = {
+  "pyjama-left-zipper": "Left Pocket with Zipper",
+  "pyjama-right-zipper": "Right Pocket with Zipper",
+  "pyjama-center-zipper": "Center Zipper",
+  "pyjama-no-pockets": "No Pockets",
+};
+
+// Upload button image to Firebase Storage
+const uploadButtonImage = async (
+  base64Image: string,
+  orderNumber: string
+): Promise<string> => {
+  try {
+    const storageRef = ref(storage, `button-images/${orderNumber}.jpg`);
+    await uploadString(storageRef, base64Image, "data_url");
+    const downloadURL = await getDownloadURL(storageRef);
+    return downloadURL;
+  } catch (error) {
+    console.error("Error uploading button image:", error);
+    throw error;
+  }
 };
 
 // Create a new order
@@ -54,26 +68,85 @@ export const createOrder = async (
   formData: OrderFormData
 ): Promise<{ orderId: string; orderNumber: string }> => {
   try {
-    const fabric = getFabricById(formData.fabric);
     const service = serviceOptionsMap[formData.service];
 
-    if (!fabric || !service) {
-      throw new Error("Invalid fabric or service selection");
+    if (!service) {
+      throw new Error("Invalid service selection");
     }
 
-    const selectedColor = fabric.colors[formData.selectedFabricColorIndex];
-    const fabricCost = fabric.pricePerMeter * formData.fabricQuantity;
+    // For stitching service, fabric is optional (customer brings own fabric)
+    const isStitchingOnly = formData.service === "stitching";
+    let fabric = null;
+    let selectedColor = null;
+    let fabricCost = 0;
+
+    if (!isStitchingOnly) {
+      fabric = await getFabricById(formData.fabric);
+      if (!fabric) {
+        throw new Error("Invalid fabric selection");
+      }
+      selectedColor = fabric.colors[formData.selectedFabricColorIndex];
+      fabricCost = fabric.pricePerMeter * formData.fabricQuantity;
+    }
+
     const tailoringCost = service.price;
     const totalCost = fabricCost + tailoringCost;
 
     const orderNumber = generateOrderNumber();
 
-    const orderData = {
+    // Build customization object
+    const customization: any = {};
+    if (formData.kurtaStyle) {
+      customization.kurtaStyle = formData.kurtaStyle;
+      customization.kurtaStyleName = kurtaStyleOptionsMap[formData.kurtaStyle] || formData.kurtaStyle;
+    }
+    if (formData.pyjamaStyle) {
+      customization.pyjamaStyle = formData.pyjamaStyle;
+      customization.pyjamaStyleName = pyjamaStyleOptionsMap[formData.pyjamaStyle] || formData.pyjamaStyle;
+    }
+    // Upload button image to Firebase Storage if provided
+    if (formData.buttonImage) {
+      try {
+        const buttonImageUrl = await uploadButtonImage(formData.buttonImage, orderNumber);
+        customization.hasButtonImage = true;
+        customization.buttonImageUrl = buttonImageUrl;
+        customization.buttonImageNote = "Custom button image uploaded by customer";
+      } catch (error) {
+        console.error("Failed to upload button image:", error);
+        customization.hasButtonImage = true;
+        customization.buttonImageNote = "Button image upload failed";
+      }
+    }
+
+    // Build measurements object
+    const cleanedMeasurements: any = {};
+    const kurtaMeasurements: any = {};
+    if (formData.measurements.kurta.chest) kurtaMeasurements.chest = formData.measurements.kurta.chest;
+    if (formData.measurements.kurta.waist) kurtaMeasurements.waist = formData.measurements.kurta.waist;
+    if (formData.measurements.kurta.shoulder) kurtaMeasurements.shoulder = formData.measurements.kurta.shoulder;
+    if (formData.measurements.kurta.length) kurtaMeasurements.length = formData.measurements.kurta.length;
+    if (formData.measurements.kurta.sleeve) kurtaMeasurements.sleeve = formData.measurements.kurta.sleeve;
+
+    const pyjamaMeasurements: any = {};
+    if (formData.measurements.pyjama.waist) pyjamaMeasurements.waist = formData.measurements.pyjama.waist;
+    if (formData.measurements.pyjama.length) pyjamaMeasurements.length = formData.measurements.pyjama.length;
+    if (formData.measurements.pyjama.thigh) pyjamaMeasurements.thigh = formData.measurements.pyjama.thigh;
+    if (formData.measurements.pyjama.bottom) pyjamaMeasurements.bottom = formData.measurements.pyjama.bottom;
+
+    if (Object.keys(kurtaMeasurements).length > 0) {
+      cleanedMeasurements.kurta = kurtaMeasurements;
+    }
+    if (Object.keys(pyjamaMeasurements).length > 0) {
+      cleanedMeasurements.pyjama = pyjamaMeasurements;
+    }
+
+    const orderData: any = {
       orderNumber,
       timestamp: Timestamp.now(),
       customer: {
         name: formData.address.name,
         phone: formData.address.phone,
+        uid: formData.customerUid, // Save customer UID for reliable tracking
       },
       deliveryAddress: formData.address,
       service: {
@@ -81,7 +154,30 @@ export const createOrder = async (
         name: service.name,
         price: service.price,
       },
-      fabric: {
+      pricing: {
+        fabricCost,
+        tailoringCost,
+        totalCost,
+      },
+      paymentMethod: formData.paymentMethod || "cod", // Save payment method (default COD)
+      status: "pending" as OrderStatus,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    };
+
+    // Only add customization if it has data
+    if (Object.keys(customization).length > 0) {
+      orderData.customization = customization;
+    }
+
+    // Only add measurements if it has data
+    if (Object.keys(cleanedMeasurements).length > 0) {
+      orderData.measurements = cleanedMeasurements;
+    }
+
+    // Only add fabric data if not stitching only
+    if (!isStitchingOnly && fabric && selectedColor) {
+      orderData.fabric = {
         id: fabric.id,
         name: fabric.name,
         color: selectedColor.name,
@@ -89,24 +185,19 @@ export const createOrder = async (
         pricePerMeter: fabric.pricePerMeter,
         quantity: formData.fabricQuantity,
         subtotal: fabricCost,
-      },
-      customization: {
-        style: formData.style,
-        styleName: styleOptionsMap[formData.style] || formData.style,
-        buttonType: formData.buttonType,
-        buttonTypeName:
-          buttonTypeOptionsMap[formData.buttonType] || formData.buttonType,
-      },
-      measurements: formData.measurements,
-      pricing: {
-        fabricCost,
-        tailoringCost,
-        totalCost,
-      },
-      status: "pending" as OrderStatus,
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
-    };
+      };
+    } else {
+      // For stitching only, use placeholder fabric data
+      orderData.fabric = {
+        id: "customer-fabric",
+        name: "Customer's Own Fabric",
+        color: "N/A",
+        colorGradient: "from-gray-100 to-gray-200",
+        pricePerMeter: 0,
+        quantity: 0,
+        subtotal: 0,
+      };
+    }
 
     const docRef = await addDoc(collection(db, "orders"), orderData);
     return {
@@ -124,7 +215,7 @@ export const createFabricOnlyOrder = async (
   formData: FabricOnlyOrderData
 ): Promise<{ orderId: string; orderNumber: string }> => {
   try {
-    const fabric = getFabricById(formData.fabric);
+    const fabric = await getFabricById(formData.fabric);
 
     if (!fabric) {
       throw new Error("Invalid fabric selection");
@@ -141,6 +232,7 @@ export const createFabricOnlyOrder = async (
       customer: {
         name: formData.address.name,
         phone: formData.address.phone,
+        uid: formData.customerUid, // Save customer UID for reliable tracking
       },
       deliveryAddress: formData.address,
       service: {
@@ -175,6 +267,7 @@ export const createFabricOnlyOrder = async (
         tailoringCost: 0,
         totalCost: fabricCost,
       },
+      paymentMethod: formData.paymentMethod || "cod", // Save payment method (default COD)
       status: "pending" as OrderStatus,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
@@ -243,6 +336,37 @@ export const getOrdersByStatus = async (
     return orders;
   } catch (error) {
     console.error("Error fetching orders by status:", error);
+    throw error;
+  }
+};
+
+// Get orders by customer UID (most reliable method)
+export const getOrdersByCustomerUid = async (
+  customerUid: string
+): Promise<Order[]> => {
+  try {
+    const q = query(
+      collection(db, "orders"),
+      where("customer.uid", "==", customerUid),
+      orderBy("createdAt", "desc")
+    );
+    const querySnapshot = await getDocs(q);
+
+    const orders: Order[] = [];
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      orders.push({
+        id: doc.id,
+        ...data,
+        timestamp: data.timestamp?.toDate() || new Date(),
+        createdAt: data.createdAt?.toDate() || new Date(),
+        updatedAt: data.updatedAt?.toDate() || new Date(),
+      } as Order);
+    });
+
+    return orders;
+  } catch (error) {
+    console.error("Error fetching orders by customer UID:", error);
     throw error;
   }
 };

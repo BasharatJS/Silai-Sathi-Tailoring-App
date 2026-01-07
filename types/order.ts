@@ -14,6 +14,26 @@ export interface OrderMeasurements {
   sleeve: string;
 }
 
+export interface KurtaMeasurements {
+  chest: string;
+  waist: string;
+  shoulder: string;
+  length: string;
+  sleeve: string;
+}
+
+export interface PyjamaMeasurements {
+  waist: string;
+  length: string;
+  thigh: string;
+  bottom: string;
+}
+
+export interface CombinedMeasurements {
+  kurta: KurtaMeasurements;
+  pyjama: PyjamaMeasurements;
+}
+
 export interface OrderAddress {
   name: string;
   phone: string;
@@ -40,10 +60,17 @@ export interface OrderFabric {
 }
 
 export interface OrderCustomization {
-  style: string;
-  styleName: string;
-  buttonType: string;
-  buttonTypeName: string;
+  style?: string;
+  styleName?: string;
+  buttonType?: string;
+  buttonTypeName?: string;
+  kurtaStyle?: string;
+  kurtaStyleName?: string;
+  pyjamaStyle?: string;
+  pyjamaStyleName?: string;
+  hasButtonImage?: boolean;
+  buttonImageNote?: string;
+  buttonImageUrl?: string;
 }
 
 export interface OrderPricing {
@@ -59,13 +86,15 @@ export interface Order {
   customer: {
     name: string;
     phone: string;
+    uid?: string; // Customer Firebase UID for reliable order tracking
   };
   deliveryAddress: OrderAddress;
   service: OrderService;
   fabric: OrderFabric;
-  customization: OrderCustomization;
-  measurements: OrderMeasurements;
+  customization?: OrderCustomization;
+  measurements?: OrderMeasurements | CombinedMeasurements | any;
   pricing: OrderPricing;
+  paymentMethod?: string; // Payment method (COD/UPI)
   status: OrderStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -76,10 +105,13 @@ export interface OrderFormData {
   fabric: string;
   fabricQuantity: number;
   selectedFabricColorIndex: number;
-  style: string;
-  buttonType: string;
-  measurements: OrderMeasurements;
+  kurtaStyle: string;
+  pyjamaStyle: string;
+  buttonImage: string;
+  measurements: CombinedMeasurements;
   address: OrderAddress;
+  customerUid?: string; // Customer Firebase UID
+  paymentMethod?: "cod" | "upi"; // Payment method
 }
 
 export interface FabricOnlyOrderData {
@@ -87,4 +119,6 @@ export interface FabricOnlyOrderData {
   fabricQuantity: number;
   selectedFabricColorIndex: number;
   address: OrderAddress;
+  customerUid?: string; // Customer Firebase UID
+  paymentMethod?: "cod" | "upi"; // Payment method
 }

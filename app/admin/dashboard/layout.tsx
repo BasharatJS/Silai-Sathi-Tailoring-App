@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
@@ -13,6 +13,8 @@ import {
   TrendingUp,
   Palette,
   ShoppingBag,
+  Scissors,
+  ShoppingCart,
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 
@@ -22,6 +24,8 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const activeView = searchParams.get("view") || "dashboard";
   const { isAdminAuthenticated, adminEmail, logoutAdmin, isHydrated } = useAuthStore();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -45,9 +49,14 @@ export default function AdminLayout({
       icon: LayoutDashboard,
     },
     {
-      name: "Orders",
-      href: "/admin/dashboard?view=orders",
-      icon: Package,
+      name: "Fabric Stitching Orders",
+      href: "/admin/dashboard?view=fabric-orders",
+      icon: Scissors,
+    },
+    {
+      name: "Product Orders",
+      href: "/admin/dashboard?view=product-orders",
+      icon: ShoppingCart,
     },
     {
       name: "Fabric Collection",
@@ -103,70 +112,78 @@ export default function AdminLayout({
           isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
         } lg:translate-x-0 ${isSidebarOpen ? "w-72" : "w-0 lg:w-20"}`}
       >
-        <div className="p-6">
-          {/* Logo */}
-          <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col h-full">
+          {/* Logo Section */}
+          <div className="p-6 border-b border-white/10">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="flex items-center gap-3"
+              className="flex items-center justify-between"
             >
-              <div className="w-10 h-10 bg-gradient-to-br from-gold to-orange rounded-lg flex items-center justify-center">
-                <Package className="h-6 w-6 text-white" />
-              </div>
-              {isSidebarOpen && (
-                <div>
-                  <h1 className="text-xl font-bold">7e<span className="text-gold">Online</span></h1>
-                  <p className="text-xs text-white/60">Admin Panel</p>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-gold to-orange rounded-lg flex items-center justify-center">
+                  <Package className="h-6 w-6 text-white" />
                 </div>
-              )}
+                {isSidebarOpen && (
+                  <div>
+                    <h1 className="text-xl font-bold">7e<span className="text-gold">Online</span></h1>
+                    <p className="text-xs text-white/60">Admin Panel</p>
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => setIsMobileSidebarOpen(false)}
+                className="lg:hidden p-2 hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
             </motion.div>
-            <button
-              onClick={() => setIsMobileSidebarOpen(false)}
-              className="lg:hidden p-2 hover:bg-white/10 rounded-lg transition-colors"
-            >
-              <X className="h-5 w-5" />
-            </button>
           </div>
 
           {/* Navigation */}
-          <nav className="space-y-2">
+          <nav className="flex-1 px-3 py-6 space-y-2 overflow-y-auto">
             {navItems.map((item) => {
               const Icon = item.icon;
+              const itemView = item.href.split('view=')[1] || 'dashboard';
+              const isActive = activeView === itemView;
               return (
                 <Link key={item.name} href={item.href}>
                   <motion.div
                     whileHover={{ x: 5 }}
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-colors cursor-pointer"
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all cursor-pointer ${
+                      isActive
+                        ? "bg-gold text-navy font-semibold"
+                        : "hover:bg-white/10"
+                    }`}
                   >
-                    <Icon className="h-5 w-5" />
+                    <Icon className="h-5 w-5 flex-shrink-0" />
                     {isSidebarOpen && (
-                      <span className="font-medium">{item.name}</span>
+                      <span className="text-sm">{item.name}</span>
                     )}
                   </motion.div>
                 </Link>
               );
             })}
           </nav>
-        </div>
 
-        {/* Admin Info & Logout */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-white/10">
-          {isSidebarOpen ? (
-            <div className="mb-4">
-              <p className="text-sm text-white/60 mb-1">Logged in as</p>
-              <p className="text-sm font-medium truncate">{adminEmail}</p>
-            </div>
-          ) : null}
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 bg-red-500/20 hover:bg-red-500/30 rounded-xl transition-colors cursor-pointer"
-          >
-            <LogOut className="h-5 w-5" />
-            {isSidebarOpen && <span className="font-medium">Logout</span>}
-          </motion.button>
+          {/* Admin Info & Logout */}
+          <div className="p-4 border-t border-white/10">
+            {isSidebarOpen ? (
+              <div className="mb-3">
+                <p className="text-xs text-white/60 mb-1">Logged in as</p>
+                <p className="text-sm font-semibold truncate">{adminEmail}</p>
+              </div>
+            ) : null}
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-4 py-3 bg-red-500/20 hover:bg-red-500/30 rounded-lg transition-colors cursor-pointer"
+            >
+              <LogOut className="h-5 w-5" />
+              {isSidebarOpen && <span className="text-sm">Logout</span>}
+            </motion.button>
+          </div>
         </div>
       </motion.aside>
 
@@ -186,9 +203,14 @@ export default function AdminLayout({
               >
                 <Menu className="h-6 w-6 text-charcoal" />
               </button>
-              <h2 className="text-2xl font-bold text-navy">
-                Order Management
-              </h2>
+              <div>
+                <h2 className="text-xl md:text-2xl font-bold text-navy">
+                  Order Management
+                </h2>
+                <p className="text-sm text-charcoal/60">
+                  Admin control panel
+                </p>
+              </div>
               <div className="w-10 lg:w-0"></div>
             </div>
           </div>

@@ -18,10 +18,13 @@ import {
   Settings,
   History,
   TrendingUp,
+  ShoppingCart,
 } from "lucide-react";
-import { CustomerAuthProvider, useCustomerAuth } from "@/contexts/CustomerAuthContext";
+import { useCustomerAuth } from "@/contexts/CustomerAuthContext";
+import { useCart } from "@/contexts/CartContext";
 import CustomerLoginModal from "@/components/CustomerLoginModal";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
+import { useRouter } from "next/navigation";
 
 function CustomerLayoutContent({
   children,
@@ -29,12 +32,15 @@ function CustomerLayoutContent({
   children: React.ReactNode;
 }) {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const activeView = searchParams.get("view") || "dashboard";
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   const { user, isAuthenticated, profile, loading, logout } = useCustomerAuth();
+  const { getCartCount } = useCart();
+  const cartCount = getCartCount();
 
   const navItems = [
     {
@@ -248,28 +254,20 @@ function CustomerLayoutContent({
               </div>
 
               <div className="flex items-center gap-3">
-                {isAuthenticated ? (
-                  <Link href="/customer/order/new">
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="flex items-center gap-2 px-4 sm:px-6 py-2.5 bg-gradient-to-r from-navy to-gold text-white rounded-lg font-semibold hover:shadow-lg transition-all cursor-pointer"
-                    >
-                      <Scissors className="h-4 w-4" />
-                      <span className="hidden sm:inline">Start Order</span>
-                    </motion.button>
-                  </Link>
-                ) : (
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setShowLoginModal(true)}
-                    className="flex items-center gap-2 px-4 sm:px-6 py-2.5 bg-gradient-to-r from-navy to-gold text-white rounded-lg font-semibold hover:shadow-lg transition-all cursor-pointer"
-                  >
-                    <Scissors className="h-4 w-4" />
-                    <span className="hidden sm:inline">Start Order</span>
-                  </motion.button>
-                )}
+                {/* Cart Icon */}
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => router.push("/customer/checkout")}
+                  className="relative p-2.5 bg-white border-2 border-navy rounded-lg hover:bg-navy hover:text-white transition-all"
+                >
+                  <ShoppingCart className="h-5 w-5" />
+                  {cartCount > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-gold text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
+                      {cartCount}
+                    </span>
+                  )}
+                </motion.button>
               </div>
             </div>
           </div>
@@ -324,17 +322,15 @@ export default function CustomerLayout({
   children: React.ReactNode;
 }) {
   return (
-    <CustomerAuthProvider>
-      <Suspense fallback={
-        <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-navy via-charcoal to-navy">
-          <div className="text-center">
-            <div className="h-12 w-12 border-4 border-gold border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-white/60">Loading...</p>
-          </div>
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-navy via-charcoal to-navy">
+        <div className="text-center">
+          <div className="h-12 w-12 border-4 border-gold border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white/60">Loading...</p>
         </div>
-      }>
-        <CustomerLayoutContent>{children}</CustomerLayoutContent>
-      </Suspense>
-    </CustomerAuthProvider>
+      </div>
+    }>
+      <CustomerLayoutContent>{children}</CustomerLayoutContent>
+    </Suspense>
   );
 }
